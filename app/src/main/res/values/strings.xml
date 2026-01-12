@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FocusLauncher</string>
+    <string name="prompt_set_default">Set as Default Launcher</string>
+    <string name="focus_mode">Focus Mode</string>
+</resources>
