@@ -13,7 +13,11 @@ import kotlinx.coroutines.withContext
 
 class AppRepository(private val context: Context) {
 
+    private var cachedApps: List<AppModel>? = null
+
     suspend fun getInstalledApps(): List<AppModel> = withContext(Dispatchers.IO) {
+        cachedApps?.let { return@withContext it }
+
         val pm = context.packageManager
         val intent = Intent(Intent.ACTION_MAIN, null).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
@@ -22,13 +26,15 @@ class AppRepository(private val context: Context) {
         val activities = pm.queryIntentActivities(intent, 0)
         val iconSize = (56 * context.resources.displayMetrics.density).toInt()
 
-        activities.mapNotNull { resolveInfo ->
+        val apps = activities.mapNotNull { resolveInfo ->
             val activityInfo = resolveInfo.activityInfo
             if (activityInfo.packageName == context.packageName) return@mapNotNull null
 
             val label = resolveInfo.loadLabel(pm).toString()
             val drawable = resolveInfo.loadIcon(pm)
-            val bitmap = drawableToBitmap(drawable, iconSize)
+            // Pre-process the icon: Scale up to 1.25x to ensure it fills the circle (removing adaptive icon corners)
+            // This moves the heavy lifting from UI scroll to one-time load.
+            val bitmap = drawableToBitmap(drawable, iconSize, scale = 1.25f)
             val imageBitmap = bitmap.asImageBitmap()
 
             AppModel(
@@ -38,6 +44,9 @@ class AppRepository(private val context: Context) {
                 isEssential = isEssentialApp(activityInfo.packageName, label)
             )
         }.sortedBy { it.label.lowercase() }
+
+        cachedApps = apps
+        apps
     }
 
     private fun isEssentialApp(packageName: String, label: String): Boolean {
@@ -55,18 +64,22 @@ class AppRepository(private val context: Context) {
                essentialPackagePatterns.any { normalizedPackage.contains(it) }
     }
 
-    private fun drawableToBitmap(drawable: Drawable, size: Int): Bitmap {
-        if (drawable is BitmapDrawable) {
+    private fun drawableToBitmap(drawable: Drawable, size: Int, scale: Float = 1.0f): Bitmap {
+        if (drawable is BitmapDrawable && scale == 1.0f) {
             val bitmap = drawable.bitmap
-            if (bitmap.width > size || bitmap.height > size) {
-                return Bitmap.createScaledBitmap(bitmap, size, size, true)
+            if (bitmap.width == size && bitmap.height == size) {
+                return bitmap
             }
-            return bitmap
         }
         
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, size, size)
+        
+        // Calculate bounds to scale content from center
+        val scaledSize = (size * scale).toInt()
+        val offset = (size - scaledSize) / 2
+        
+        drawable.setBounds(offset, offset, offset + scaledSize, offset + scaledSize)
         drawable.draw(canvas)
         return bitmap
     }

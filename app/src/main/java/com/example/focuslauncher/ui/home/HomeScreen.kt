@@ -422,8 +422,8 @@ fun AppIcon(
                         onClick = { 
                             showMenu = false
                             onUninstall() 
-                        }
-                    )
+                    }
+                )
                 }
             }
         }
@@ -441,28 +441,32 @@ fun AppIcon(
                 .graphicsLayer {
                     shape = CircleShape
                     clip = true
+                    // Alpha is fine here for performance
+                    if (isGrayscale) {
+                        alpha = 0.5f
+                    }
                 }
         ) {
             Image(
                 bitmap = app.icon,
                 contentDescription = app.label,
+                colorFilter = colorFilter,
                 modifier = Modifier
                     .fillMaxSize()
                     .then(
-                        if (isBlurred) Modifier.blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                        if (isBlurred) Modifier.blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                         else Modifier
-                    ),
-                colorFilter = colorFilter,
-                alpha = if (isGrayscale) 0.5f else 1.0f 
+                    )
             )
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         
         Text(
             text = app.label,
             fontSize = if (gridColumns > 5) 10.sp else 12.sp,
-            maxLines = 1,
+            lineHeight = if (gridColumns > 5) 12.sp else 14.sp,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
             color = if (isGrayscale) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface
