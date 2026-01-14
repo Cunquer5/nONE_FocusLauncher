@@ -6,6 +6,7 @@
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <!-- SYSTEM_ALERT_WINDOW might not be needed if we use full screen activity for interception, 
          but we'll request it if we decide to use overlays. Keeping it off for MVP start to simplify. -->
 

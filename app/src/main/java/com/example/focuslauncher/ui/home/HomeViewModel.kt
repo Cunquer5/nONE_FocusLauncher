@@ -33,9 +33,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         prefsRepository.isFocusModeEnabled,
         prefsRepository.isBlurEnabled,
         prefsRepository.focusAppPackages,
-        prefsRepository.gridColumns
-    ) { isFocusMode, isBlur, focusPackages, columns ->
-        Prefs(isFocusMode, isBlur, focusPackages, columns)
+        prefsRepository.gridColumns,
+        prefsRepository.appOrder
+    ) { isFocusMode, isBlur, focusPackages, columns, order ->
+        Prefs(isFocusMode, isBlur, focusPackages, columns, order)
     }
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -46,16 +47,29 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     ) { apps, prefs, intentions, query ->
         
         val filteredApps = apps.map { app ->
-            app.copy(isFocusApp = prefs.focusPackages.contains(app.packageName))
+            app.copy(isFocusMode = prefs.isFocusMode, isFocusApp = prefs.focusPackages.contains(app.packageName))
         }.filter { 
             it.label.contains(query, ignoreCase = true)
         }
 
         val sortedApps = if (query.isEmpty()) {
-            filteredApps.sortedWith(
-                compareByDescending<AppModel> { it.isFocusApp }
-                    .thenBy { it.label.lowercase() }
-            )
+            if (prefs.appOrder.isNotEmpty()) {
+                // Create a map of package name to index for O(1) lookup
+                val orderMap = prefs.appOrder.withIndex().associate { it.value to it.index }
+                
+                filteredApps.sortedWith(
+                    compareBy<AppModel> { orderMap[it.packageName] ?: Int.MAX_VALUE }
+                        .thenByDescending { it.isFocusApp } // Tie-breaker if needed, or keeping focus apps logic secondary to order?
+                        // Actually, if user sets order, that should win. But new apps go to end.
+                        .thenBy { it.label.lowercase() }
+                )
+            } else {
+                // Default Sort
+                filteredApps.sortedWith(
+                    compareByDescending<AppModel> { it.isFocusApp }
+                        .thenBy { it.label.lowercase() }
+                )
+            }
         } else {
             filteredApps.sortedBy { it.label.lowercase() }
         }
@@ -79,6 +93,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val allIntentions = intentionRepository.getAllIntentions()
 
     init {
+        loadApps()
+    }
+
+    fun reloadApps() {
         loadApps()
     }
 
@@ -122,12 +140,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             onComplete()
         }
     }
+    
+    fun saveAppOrder(newOrder: List<AppModel>) {
+        val packageOrder = newOrder.map { it.packageName }
+        prefsRepository.setAppOrder(packageOrder)
+    }
 
     private data class Prefs(
         val isFocusMode: Boolean,
         val isBlur: Boolean,
         val focusPackages: Set<String>,
-        val columns: Int
+        val columns: Int,
+        val appOrder: List<String>
     )
 }
 

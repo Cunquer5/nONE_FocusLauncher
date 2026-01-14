@@ -3,17 +3,19 @@ package com.example.focuslauncher.ui.home
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.PowerManager
 import android.provider.Settings
+import android.os.PowerManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +66,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -232,20 +236,44 @@ fun HomeScreen(
                 ) {
                     items(uiState.apps, key = { it.packageName }) { app ->
                         val isAffectedByFocus = uiState.isFocusModeEnabled && !app.isFocusApp
-                        
+                        val isSystemOrEssential = app.isEssential || app.packageName == "com.android.settings" || app.packageName == context.packageName
+
                         AppIcon(
                             app = app,
                             isGrayscale = isAffectedByFocus,
                             isBlurred = isAffectedByFocus && uiState.isBlurEnabled,
                             gridColumns = uiState.gridColumns,
                             onAppClick = {
-                                if (app.isEssential || app.packageName == "com.android.settings" || app.packageName == context.packageName) {
+                                if (isSystemOrEssential) {
                                      val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
                                      if (launchIntent != null) context.startActivity(launchIntent)
                                 } else {
                                     appToLaunch = app
                                 }
-                            }
+                            },
+                            onUninstall = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_DELETE).apply {
+                                        data = Uri.fromParts("package", app.packageName, null)
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            },
+                            onAppInfo = {
+                                try {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", app.packageName, null)
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            },
+                            isUninstallable = !isSystemOrEssential
                         )
                     }
                 }
@@ -257,14 +285,12 @@ fun HomeScreen(
                 onDismissRequest = { showSettingsSheet = false },
                 sheetState = sheetState,
                 scrimColor = Color.Black.copy(alpha = 0.32f),
-                containerColor = Color.Transparent, // Make container transparent to allow tray gap
+                containerColor = Color.Transparent, 
                 tonalElevation = 0.dp,
-                dragHandle = null, // Drag handle moved inside content
-                windowInsets = WindowInsets(0, 0, 0, 0) // Full screen window to fix scrim cutoff
+                dragHandle = null, 
+                windowInsets = WindowInsets(0, 0, 0, 0) 
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // This spacer creates the "tray a little below top" gap
-                    // and handles dismissal when clicking in the gap
                     Spacer(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -281,7 +307,6 @@ fun HomeScreen(
                         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
                     ) {
                         Column {
-                            // Manual Drag Handle
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -340,14 +365,19 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppIcon(
     app: AppModel,
     isGrayscale: Boolean,
     isBlurred: Boolean,
     gridColumns: Int,
-    onAppClick: (AppModel) -> Unit
+    onAppClick: (AppModel) -> Unit,
+    onUninstall: () -> Unit,
+    onAppInfo: () -> Unit,
+    isUninstallable: Boolean
 ) {
+    var showMenu by remember { mutableStateOf(false) }
     val iconSize = when (gridColumns) {
         4 -> 56.dp
         5 -> 48.dp
@@ -366,13 +396,37 @@ fun AppIcon(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = rememberRipple(bounded = true, color = Color.Gray),
-                onClick = { onAppClick(app) }
+                onClick = { onAppClick(app) },
+                onLongClick = { showMenu = true }
             )
             .padding(4.dp)
     ) {
+        Box {
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("App Info") },
+                    onClick = { 
+                        showMenu = false
+                        onAppInfo() 
+                    }
+                )
+                if (isUninstallable) {
+                    DropdownMenuItem(
+                        text = { Text("Uninstall") },
+                        onClick = { 
+                            showMenu = false
+                            onUninstall() 
+                        }
+                    )
+                }
+            }
+        }
         val colorFilter = remember(isGrayscale) {
             if (isGrayscale) {
                 ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
@@ -445,6 +499,7 @@ fun SettingsContent(
             .padding(horizontal = 16.dp)
             .padding(top = 8.dp, bottom = navigationBarPadding + 16.dp)
     ) {
+        @Suppress("DEPRECATION")
         Text("Launcher Settings", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -485,6 +540,7 @@ fun SettingsContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            @Suppress("DEPRECATION")
             Text("Focus Mode")
             Switch(checked = isFocusModeEnabled, onCheckedChange = { onToggleFocusMode() })
         }
@@ -494,11 +550,13 @@ fun SettingsContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            @Suppress("DEPRECATION")
             Text("Blur Non-Focus Apps")
             Switch(checked = isBlurEnabled, onCheckedChange = { onToggleBlur() })
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+        @Suppress("DEPRECATION")
         Text("App Grid Size", style = MaterialTheme.typography.titleMedium)
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -519,7 +577,9 @@ fun SettingsContent(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
+        @Suppress("DEPRECATION")
         Text("Manage Focus Apps", style = MaterialTheme.typography.titleMedium)
+        @Suppress("DEPRECATION")
         Text("Select apps that remain colorful in Focus Mode", style = MaterialTheme.typography.bodySmall)
         Spacer(modifier = Modifier.height(8.dp))
         
@@ -558,6 +618,7 @@ fun SettingsContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            @Suppress("DEPRECATION")
             Text("Recent Intentions", style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = { showFullLog = true }) {
                 Text("See All")
@@ -573,6 +634,7 @@ fun SettingsContent(
                 IntentionItem(intention)
             }
             if (recentIntentions.isEmpty()) {
+                @Suppress("DEPRECATION")
                 Text(
                     "No intentions logged yet.",
                     style = MaterialTheme.typography.bodySmall,
@@ -592,6 +654,7 @@ fun SettingsContent(
 
 @Composable
 fun IntentionItem(intention: Intention) {
+    @Suppress("DEPRECATION")
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -611,12 +674,14 @@ fun IntentionItem(intention: Intention) {
             val date = remember(intention.timestamp) {
                 SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(intention.timestamp)
             }
+            @Suppress("DEPRECATION")
             Text(
                 text = date,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        @Suppress("DEPRECATION")
         Text(
             text = "\"${intention.intentionText}\"",
             style = MaterialTheme.typography.bodyMedium,
@@ -634,6 +699,7 @@ fun FullIntentionLogDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        @Suppress("DEPRECATION")
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
@@ -648,12 +714,14 @@ fun FullIntentionLogDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
+                    @Suppress("DEPRECATION")
                     Text(
                         text = "Full Intention Log",
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
+                @Suppress("DEPRECATION")
                 HorizontalDivider()
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
