@@ -1,14 +1,14 @@
-package com.example.focuslauncher.ui.home
+package com.example.nonelauncher.ui.home
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.focuslauncher.data.local.AppDatabase
-import com.example.focuslauncher.data.local.entity.Intention
-import com.example.focuslauncher.data.model.AppModel
-import com.example.focuslauncher.data.repository.AppRepository
-import com.example.focuslauncher.data.repository.IntentionRepository
-import com.example.focuslauncher.data.repository.UserPreferencesRepository
+import com.example.nonelauncher.data.local.AppDatabase
+import com.example.nonelauncher.data.local.entity.Intention
+import com.example.nonelauncher.data.model.AppModel
+import com.example.nonelauncher.data.repository.AppRepository
+import com.example.nonelauncher.data.repository.IntentionRepository
+import com.example.nonelauncher.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

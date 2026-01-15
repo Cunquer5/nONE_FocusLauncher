@@ -1,4 +1,4 @@
-package com.example.focuslauncher.ui.home
+package com.example.nonelauncher.ui.home
 
 import android.content.Context
 import android.content.Intent
@@ -103,9 +103,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.focuslauncher.data.local.entity.Intention
-import com.example.focuslauncher.data.model.AppModel
-import com.example.focuslauncher.ui.components.IntentionDialog
+import com.example.nonelauncher.data.local.entity.Intention
+import com.example.nonelauncher.data.model.AppModel
+import com.example.nonelauncher.ui.components.IntentionDialog
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -503,8 +503,8 @@ fun SettingsContent(
             .padding(horizontal = 16.dp)
             .padding(top = 8.dp, bottom = navigationBarPadding + 16.dp)
     ) {
-        @Suppress("DEPRECATION")
-        Text("Launcher Settings", style = MaterialTheme.typography.titleLarge)
+
+        Text("nONE Settings", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
         
         OutlinedButton(
@@ -544,7 +544,7 @@ fun SettingsContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            @Suppress("DEPRECATION")
+
             Text("Focus Mode")
             Switch(checked = isFocusModeEnabled, onCheckedChange = { onToggleFocusMode() })
         }
@@ -554,13 +554,13 @@ fun SettingsContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            @Suppress("DEPRECATION")
+
             Text("Blur Non-Focus Apps")
             Switch(checked = isBlurEnabled, onCheckedChange = { onToggleBlur() })
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        @Suppress("DEPRECATION")
+
         Text("App Grid Size", style = MaterialTheme.typography.titleMedium)
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -581,9 +581,7 @@ fun SettingsContent(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
-        @Suppress("DEPRECATION")
         Text("Manage Focus Apps", style = MaterialTheme.typography.titleMedium)
-        @Suppress("DEPRECATION")
         Text("Select apps that remain colorful in Focus Mode", style = MaterialTheme.typography.bodySmall)
         Spacer(modifier = Modifier.height(8.dp))
         
@@ -622,7 +620,6 @@ fun SettingsContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            @Suppress("DEPRECATION")
             Text("Recent Intentions", style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = { showFullLog = true }) {
                 Text("See All")
@@ -638,7 +635,6 @@ fun SettingsContent(
                 IntentionItem(intention)
             }
             if (recentIntentions.isEmpty()) {
-                @Suppress("DEPRECATION")
                 Text(
                     "No intentions logged yet.",
                     style = MaterialTheme.typography.bodySmall,
@@ -658,7 +654,6 @@ fun SettingsContent(
 
 @Composable
 fun IntentionItem(intention: Intention) {
-    @Suppress("DEPRECATION")
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -678,14 +673,12 @@ fun IntentionItem(intention: Intention) {
             val date = remember(intention.timestamp) {
                 SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(intention.timestamp)
             }
-            @Suppress("DEPRECATION")
             Text(
                 text = date,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        @Suppress("DEPRECATION")
         Text(
             text = "\"${intention.intentionText}\"",
             style = MaterialTheme.typography.bodyMedium,
@@ -703,7 +696,6 @@ fun FullIntentionLogDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        @Suppress("DEPRECATION")
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
@@ -718,14 +710,12 @@ fun FullIntentionLogDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
-                    @Suppress("DEPRECATION")
                     Text(
                         text = "Full Intention Log",
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
-                @Suppress("DEPRECATION")
                 HorizontalDivider()
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),

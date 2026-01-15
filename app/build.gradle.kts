@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.focuslauncher"
+    namespace = "com.example.nonelauncher"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.focuslauncher"
+        applicationId = "com.example.nonelauncher"
         minSdk = 28
         targetSdk = 34
         versionCode = 1

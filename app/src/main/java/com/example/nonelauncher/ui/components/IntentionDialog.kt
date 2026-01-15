@@ -1,4 +1,4 @@
-package com.example.focuslauncher.ui.components
+package com.example.nonelauncher.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.example.focuslauncher.data.model.AppModel
+import com.example.nonelauncher.data.model.AppModel
 
 @Composable
 fun IntentionDialog(

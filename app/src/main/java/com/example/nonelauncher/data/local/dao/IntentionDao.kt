@@ -1,9 +1,9 @@
-package com.example.focuslauncher.data.local.dao
+package com.example.nonelauncher.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import com.example.focuslauncher.data.local.entity.Intention
+import com.example.nonelauncher.data.local.entity.Intention
 import kotlinx.coroutines.flow.Flow
 
 @Dao

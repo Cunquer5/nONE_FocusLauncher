@@ -6,3 +6,8 @@ local.properties
 *.hprof
 .idea/
 .kotlin/
+
+/app/release/
+*.apk
+*.dm
+

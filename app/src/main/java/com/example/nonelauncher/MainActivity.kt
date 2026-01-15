@@ -1,4 +1,4 @@
-package com.example.focuslauncher
+package com.example.nonelauncher
 
 import android.app.role.RoleManager
 import android.content.Context
@@ -37,13 +37,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.example.focuslauncher.ui.home.HomeScreen
+import com.example.nonelauncher.ui.home.HomeScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Enable edge-to-edge to allow content (and wallpaper) to fill the whole screen
         enableEdgeToEdge()
         
         setContent {
@@ -93,7 +92,7 @@ fun LauncherScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "FocusLauncher needs to be set as your default Home app to work correctly.",
+                    text = "nONE Launcher needs to be set as your default Home app to work correctly.",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )
@@ -137,7 +136,7 @@ fun openFallbackHomeSettings(context: Context) {
             val intent = Intent(Settings.ACTION_SETTINGS)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            Toast.makeText(context, "Please set FocusLauncher as Default Home App in Settings", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Please set nONE Launcher as Default Home App in Settings", Toast.LENGTH_LONG).show()
         } catch (e2: Exception) {
             Toast.makeText(context, "Unable to open Settings", Toast.LENGTH_SHORT).show()
         }

@@ -1,4 +1,4 @@
-package com.example.focuslauncher.data.local.entity
+package com.example.nonelauncher.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

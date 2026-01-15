@@ -1,7 +1,7 @@
-package com.example.focuslauncher.data.repository
+package com.example.nonelauncher.data.repository
 
-import com.example.focuslauncher.data.local.dao.IntentionDao
-import com.example.focuslauncher.data.local.entity.Intention
+import com.example.nonelauncher.data.local.dao.IntentionDao
+import com.example.nonelauncher.data.local.entity.Intention
 import kotlinx.coroutines.flow.Flow
 
 class IntentionRepository(private val intentionDao: IntentionDao) {

@@ -1,4 +1,4 @@
-package com.example.focuslauncher.data.repository
+package com.example.nonelauncher.data.repository
 
 import android.content.Context
 import android.content.Intent
@@ -7,7 +7,7 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.ui.graphics.asImageBitmap
-import com.example.focuslauncher.data.model.AppModel
+import com.example.nonelauncher.data.model.AppModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

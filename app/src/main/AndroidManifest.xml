@@ -7,8 +7,6 @@
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-    <!-- SYSTEM_ALERT_WINDOW might not be needed if we use full screen activity for interception, 
-         but we'll request it if we decide to use overlays. Keeping it off for MVP start to simplify. -->
 
     <application
         android:allowBackup="true"
@@ -18,14 +16,14 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.FocusLauncher"
+        android:theme="@style/Theme.NoneLauncher"
         tools:targetApi="31">
         
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.nonelauncher.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.FocusLauncher">
+            android:theme="@style/Theme.NoneLauncher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />

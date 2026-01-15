@@ -1,4 +1,4 @@
-package com.example.focuslauncher.data.repository
+package com.example.nonelauncher.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
