@@ -1,4 +1,4 @@
-# FocusLauncher
+# nONE-FocusLauncher
 
  FocusLauncher is a minimalist Android system launcher designed to enhance productivity by reducing distractions.
 
