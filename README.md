@@ -1,6 +1,6 @@
-# FocusLauncher
+# nONE FocusLauncher
 
- FocusLauncher is a minimalist Android system launcher designed to enhance productivity by reducing distractions.
+ nONE FocusLauncher is a minimalist Android system launcher designed to enhance productivity by reducing distractions.
 
 ## Features
 
@@ -21,11 +21,11 @@
 1. Open the project in Android Studio Iguana or later.
 2. Sync Gradle projects.
 3. Build and Run on an Android Device or Emulator (API 28+).
-4. **Important**: When prompted, select "FocusLauncher" as your Default Home App.
+4. **Important**: When prompted, select "nONE Launcher" as your Default Home App.
 
 ## Development
 
-- **App Module**: `app/src/main/java/com/example/focuslauncher`
+- **App Module**: `app/src/main/java/com/example/nONE launcher`
 - **Home Screen**: `ui/home/HomeScreen.kt`
 - **Data Layer**: `data/repository`
 
