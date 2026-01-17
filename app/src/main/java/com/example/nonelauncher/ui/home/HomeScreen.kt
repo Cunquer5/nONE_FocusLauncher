@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -119,6 +120,7 @@ fun HomeScreen(
     val allIntentions by homeViewModel.allIntentions.collectAsState(initial = emptyList())
     val context = LocalContext.current
     var showSettingsSheet by remember { mutableStateOf(false) }
+    var showFullLog by remember { mutableStateOf(false) }
     var appToLaunch by remember { mutableStateOf<AppModel?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
@@ -334,12 +336,19 @@ fun HomeScreen(
                                     context.startActivity(Intent.createChooser(intent, "Select Wallpaper"))
                                 },
                                 recentIntentions = uiState.recentIntentions,
-                                allIntentions = allIntentions
+                                onShowFullLog = { showFullLog = true }
                             )
                         }
                     }
                 }
             }
+        }
+        
+        if (showFullLog) {
+            FullIntentionLogDialog(
+                intentions = allIntentions,
+                onDismiss = { showFullLog = false }
+            )
         }
         
         val currentApp = appToLaunch
@@ -392,10 +401,12 @@ fun AppIcon(
         else -> 8.dp
     }
 
+    val iconShape = RoundedCornerShape(22)
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(iconShape)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = rememberRipple(bounded = true, color = Color.Gray),
@@ -439,9 +450,8 @@ fun AppIcon(
             modifier = Modifier
                 .size(iconSize)
                 .graphicsLayer {
-                    shape = CircleShape
+                    shape = iconShape
                     clip = true
-                    // Alpha is fine here for performance
                     if (isGrayscale) {
                         alpha = 0.5f
                     }
@@ -488,9 +498,8 @@ fun SettingsContent(
     onToggleAppFocus: (AppModel) -> Unit,
     onChangeWallpaper: () -> Unit,
     recentIntentions: List<Intention>,
-    allIntentions: List<Intention>
+    onShowFullLog: () -> Unit
 ) {
-    var showFullLog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val scrollState = rememberScrollState()
@@ -503,7 +512,6 @@ fun SettingsContent(
             .padding(horizontal = 16.dp)
             .padding(top = 8.dp, bottom = navigationBarPadding + 16.dp)
     ) {
-
         Text("nONE Settings", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -544,7 +552,6 @@ fun SettingsContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
             Text("Focus Mode")
             Switch(checked = isFocusModeEnabled, onCheckedChange = { onToggleFocusMode() })
         }
@@ -554,13 +561,11 @@ fun SettingsContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
             Text("Blur Non-Focus Apps")
             Switch(checked = isBlurEnabled, onCheckedChange = { onToggleBlur() })
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
         Text("App Grid Size", style = MaterialTheme.typography.titleMedium)
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -590,11 +595,12 @@ fun SettingsContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            val iconShape = RoundedCornerShape(22)
             apps.forEach { app ->
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(CircleShape)
+                        .clip(iconShape)
                         .background(if (app.isFocusApp) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { onToggleAppFocus(app) },
                     contentAlignment = Alignment.Center
@@ -604,7 +610,7 @@ fun SettingsContent(
                         contentDescription = null, 
                         modifier = Modifier
                             .size(32.dp)
-                            .clip(CircleShape),
+                            .clip(iconShape),
                          colorFilter = if (!app.isFocusApp) {
                              remember(app.isFocusApp) { ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }) }
                          } else null
@@ -621,7 +627,7 @@ fun SettingsContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Recent Intentions", style = MaterialTheme.typography.titleMedium)
-            TextButton(onClick = { showFullLog = true }) {
+            TextButton(onClick = onShowFullLog) {
                 Text("See All")
             }
         }
@@ -642,13 +648,6 @@ fun SettingsContent(
                 )
             }
         }
-    }
-
-    if (showFullLog) {
-        FullIntentionLogDialog(
-            intentions = allIntentions,
-            onDismiss = { showFullLog = false }
-        )
     }
 }
 
@@ -680,51 +679,66 @@ fun IntentionItem(intention: Intention) {
             )
         }
         Text(
-            text = "\"${intention.intentionText}\"",
+            text = intention.intentionText,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 4.dp)
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullIntentionLogDialog(
     intentions: List<Intention>,
     onDismiss: () -> Unit
 ) {
-    Dialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        sheetState = sheetState,
+        scrimColor = Color.Black.copy(alpha = 0.32f),
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = null,
+        windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
+        Column(modifier = Modifier.fillMaxHeight(0.5f)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                    Text(
-                        text = "Full Intention Log",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+                        .size(32.dp, 4.dp)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Full Intention Log",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Close")
                 }
-                HorizontalDivider()
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(intentions, key = { it.id }) { intention ->
-                        IntentionItem(intention)
-                    }
+            }
+            HorizontalDivider()
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(intentions, key = { it.id }) { intention ->
+                    IntentionItem(intention)
                 }
             }
         }

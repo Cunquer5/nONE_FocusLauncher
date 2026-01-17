@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Rect
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.ui.graphics.asImageBitmap
@@ -34,7 +36,7 @@ class AppRepository(private val context: Context) {
             val drawable = resolveInfo.loadIcon(pm)
             // Pre-process the icon: Scale up to 1.25x to ensure it fills the circle (removing adaptive icon corners)
             // This moves the heavy lifting from UI scroll to one-time load.
-            val bitmap = drawableToBitmap(drawable, iconSize, scale = 1.25f)
+            val bitmap = drawableToBitmap(drawable, iconSize, scale = 1.0f)
             val imageBitmap = bitmap.asImageBitmap()
 
             AppModel(
@@ -75,12 +77,32 @@ class AppRepository(private val context: Context) {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
-        // Calculate bounds to scale content from center
-        val scaledSize = (size * scale).toInt()
-        val offset = (size - scaledSize) / 2
+        if (drawable is AdaptiveIconDrawable) {
+            // Scale adaptive icons to zoom into the visual viewport (standard is ~1.5x, using 1.3x for safety)
+            val adaptiveScale = scale * 1.3f
+            val scaledSize = (size * adaptiveScale).toInt()
+            val offset = (size - scaledSize) / 2
+            val bounds = Rect(offset, offset, offset + scaledSize, offset + scaledSize)
+            
+            // Draw layers separately to bypass system mask
+            drawable.background?.let { 
+                it.bounds = bounds
+                it.draw(canvas) 
+            }
+            drawable.foreground?.let { 
+                it.bounds = bounds
+                it.draw(canvas) 
+            }
+        } else {
+            // Legacy icons: use provided scale (usually 1.0)
+            val scaledSize = (size * scale).toInt()
+            val offset = (size - scaledSize) / 2
+            val bounds = Rect(offset, offset, offset + scaledSize, offset + scaledSize)
+            
+            drawable.bounds = bounds
+            drawable.draw(canvas)
+        }
         
-        drawable.setBounds(offset, offset, offset + scaledSize, offset + scaledSize)
-        drawable.draw(canvas)
         return bitmap
     }
 }
