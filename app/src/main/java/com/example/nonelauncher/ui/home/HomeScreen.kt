@@ -56,6 +56,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -75,6 +76,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,7 +108,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nonelauncher.data.local.entity.Intention
 import com.example.nonelauncher.data.model.AppModel
+import com.example.nonelauncher.ui.MainViewModel
 import com.example.nonelauncher.ui.components.IntentionDialog
+import com.example.nonelauncher.ui.modes.LauncherUiMode
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -114,10 +119,14 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    homeViewModel: HomeViewModel = viewModel()
+    homeViewModel: HomeViewModel = viewModel(),
+    mainViewModel: MainViewModel = viewModel(),
+    onOpenModernSettings: () -> Unit = {}
 ) {
     val uiState by homeViewModel.uiState.collectAsState()
     val allIntentions by homeViewModel.allIntentions.collectAsState(initial = emptyList())
+    val uiMode by mainViewModel.uiMode.collectAsState(initial = LauncherUiMode.LEGACY)
+    
     val context = LocalContext.current
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showFullLog by remember { mutableStateOf(false) }
@@ -336,7 +345,9 @@ fun HomeScreen(
                                     context.startActivity(Intent.createChooser(intent, "Select Wallpaper"))
                                 },
                                 recentIntentions = uiState.recentIntentions,
-                                onShowFullLog = { showFullLog = true }
+                                onShowFullLog = { showFullLog = true },
+                                currentUiMode = uiMode,
+                                onUiModeChange = { mainViewModel.setUiMode(it) }
                             )
                         }
                     }
@@ -498,7 +509,9 @@ fun SettingsContent(
     onToggleAppFocus: (AppModel) -> Unit,
     onChangeWallpaper: () -> Unit,
     recentIntentions: List<Intention>,
-    onShowFullLog: () -> Unit
+    onShowFullLog: () -> Unit,
+    currentUiMode: LauncherUiMode,
+    onUiModeChange: (LauncherUiMode) -> Unit
 ) {
     val context = LocalContext.current
     val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -514,6 +527,20 @@ fun SettingsContent(
     ) {
         Text("nONE Settings", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
+
+        ListItem(
+            headlineContent = { Text("Modern UI (Experimental)") },
+            trailingContent = {
+                Switch(
+                    checked = currentUiMode == LauncherUiMode.MODERN,
+                    onCheckedChange = { isChecked ->
+                        onUiModeChange(if (isChecked) LauncherUiMode.MODERN else LauncherUiMode.LEGACY)
+                    }
+                )
+            }
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
         
         OutlinedButton(
             onClick = onChangeWallpaper,
@@ -727,7 +754,7 @@ fun FullIntentionLogDialog(
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onDismiss) {
+                IconButton(onClick = { onDismiss() }) {
                     Icon(Icons.Default.Close, contentDescription = "Close")
                 }
             }

@@ -15,14 +15,29 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme()
-private val LightColorScheme = lightColorScheme()
+private val DarkColorScheme = darkColorScheme(
+    primary = OrangePrimary,
+    background = OrangePrimary, // App background is orange
+    surface = Black,
+    onPrimary = White,
+    onBackground = White,
+    onSurface = White
+)
+
+private val LightColorScheme = lightColorScheme(
+    primary = OrangePrimary,
+    background = OrangePrimary, // App background is orange
+    surface = White,
+    onPrimary = White,
+    onBackground = White, // Text on orange should be white usually? Or dark? PRD images show white text on orange.
+    onSurface = Black
+)
 
 @Composable
 fun NoneLauncherTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Disable dynamic color to enforce our orange branding
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -44,14 +59,16 @@ fun NoneLauncherTheme(
             
             // Adjust icons based on theme
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
+                // If background is dark orange, we want light status bars (white text)
+                isAppearanceLightStatusBars = false 
+                isAppearanceLightNavigationBars = false
             }
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = Typography,
         content = content
     )
 }

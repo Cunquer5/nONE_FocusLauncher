@@ -2,6 +2,7 @@ package com.example.nonelauncher.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.nonelauncher.data.model.LauncherUiMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,14 @@ class UserPreferencesRepository(context: Context) {
     private val _appOrder = MutableStateFlow(parseAppOrder(prefs.getString(KEY_APP_ORDER, null)))
     val appOrder: StateFlow<List<String>> = _appOrder.asStateFlow()
 
+    private val _oneThingTask = MutableStateFlow(prefs.getString(KEY_ONE_THING_TASK, null))
+    val oneThingTask: StateFlow<String?> = _oneThingTask.asStateFlow()
+
+    private val _uiMode = MutableStateFlow(
+        LauncherUiMode.valueOf(prefs.getString(KEY_UI_MODE, LauncherUiMode.LEGACY.name) ?: LauncherUiMode.LEGACY.name)
+    )
+    val uiMode: StateFlow<LauncherUiMode> = _uiMode.asStateFlow()
+
     fun setFocusModeEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_FOCUS_ENABLED, enabled).apply()
         _isFocusModeEnabled.value = enabled
@@ -42,6 +51,16 @@ class UserPreferencesRepository(context: Context) {
     fun setFocusApps(packages: Set<String>) {
         prefs.edit().putStringSet(KEY_FOCUS_APPS, packages).apply()
         _focusAppPackages.value = packages
+    }
+    
+    fun setOneThingTask(task: String?) {
+        prefs.edit().putString(KEY_ONE_THING_TASK, task).apply()
+        _oneThingTask.value = task
+    }
+
+    fun setUiMode(mode: LauncherUiMode) {
+        prefs.edit().putString(KEY_UI_MODE, mode.name).apply()
+        _uiMode.value = mode
     }
 
     fun addFocusApp(packageName: String) {
@@ -67,11 +86,32 @@ class UserPreferencesRepository(context: Context) {
         return serialized.split(",").filter { it.isNotEmpty() }
     }
 
+    private val _widgetIds = MutableStateFlow(parseWidgetIds(prefs.getString(KEY_WIDGET_IDS, null)))
+    val widgetIds: StateFlow<List<Int>> = _widgetIds.asStateFlow()
+
+    fun setWidgetIds(ids: List<Int>) {
+        val serialized = ids.joinToString(",")
+        prefs.edit().putString(KEY_WIDGET_IDS, serialized).apply()
+        _widgetIds.value = ids
+    }
+
+    private fun parseWidgetIds(serialized: String?): List<Int> {
+        if (serialized.isNullOrEmpty()) return emptyList()
+        return try {
+            serialized.split(",").mapNotNull { it.toIntOrNull() }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     companion object {
         private const val KEY_FOCUS_ENABLED = "focus_mode_enabled"
         private const val KEY_BLUR_ENABLED = "blur_enabled"
         private const val KEY_GRID_COLUMNS = "grid_columns"
         private const val KEY_FOCUS_APPS = "focus_app_packages"
         private const val KEY_APP_ORDER = "app_sort_order"
+        private const val KEY_ONE_THING_TASK = "one_thing_task"
+        private const val KEY_UI_MODE = "ui_mode"
+        private const val KEY_WIDGET_IDS = "app_widget_ids"
     }
 }

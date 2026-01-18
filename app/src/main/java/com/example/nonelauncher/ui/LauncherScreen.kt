@@ -8,6 +8,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,13 +34,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nonelauncher.ui.home.HomeScreen
+import com.example.nonelauncher.ui.modes.LauncherUiMode
+import com.example.nonelauncher.ui.modern.ModernHomeScreen
 
 @Composable
-fun LauncherScreen() {
+fun LauncherScreen(
+    appWidgetHost: android.appwidget.AppWidgetHost? = null,
+    appWidgetManager: android.appwidget.AppWidgetManager? = null,
+    mainViewModel: MainViewModel = viewModel()
+) {
     val context = LocalContext.current
     var isDefaultLauncher by remember { mutableStateOf(isDefaultLauncher(context)) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val uiMode by mainViewModel.uiMode.collectAsState(initial = LauncherUiMode.LEGACY)
 
     val roleLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -91,7 +101,23 @@ fun LauncherScreen() {
             }
         }
     } else {
-        HomeScreen()
+        Crossfade(targetState = uiMode, label = "UiTransition") { mode ->
+            when (mode) {
+                LauncherUiMode.LEGACY -> HomeScreen(
+                    onOpenModernSettings = {
+                        // This can be used if we need to deep link or trigger something
+                    }
+                )
+                LauncherUiMode.MODERN -> ModernHomeScreen(
+                    appWidgetHost = appWidgetHost,
+                    appWidgetManager = appWidgetManager,
+                    onOpenSettings = {
+                        // In Modern mode, we might want a way to switch back
+                        mainViewModel.setUiMode(LauncherUiMode.LEGACY)
+                    }
+                )
+            }
+        }
     }
 }
 

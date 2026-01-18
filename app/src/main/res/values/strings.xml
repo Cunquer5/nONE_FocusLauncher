@@ -3,4 +3,15 @@
     <string name="app_name">nONE Launcher</string>
     <string name="prompt_set_default">Set as Default Launcher</string>
     <string name="none_mode">nONE Mode</string>
+    <string name="search_apps_widgets">Search apps &amp; widgets</string>
+    <string name="widget_timer_subtitle">Active Timer</string>
+    <string name="widget_calendar_subtitle">Meetings</string>
+    <string name="widget_weather_subtitle">Sunny</string>
+    <string name="widget_weather_temp">72°</string>
+    <string name="widget_timer_time">04:20</string>
+    <string name="widget_calendar_date">12</string>
+    <string name="action_search">Search</string>
+    <string name="action_add_widget">Add Widget</string>
+    <string name="new_widget_title">New</string>
+    <string name="new_widget_subtitle">Widget</string>
 </resources>

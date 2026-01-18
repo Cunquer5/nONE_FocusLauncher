@@ -30,21 +30,38 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _recentIntentions = intentionRepository.getAllIntentions().map { it.take(5) }
 
     private val _userPrefsFlow = combine(
-        prefsRepository.isFocusModeEnabled,
-        prefsRepository.isBlurEnabled,
-        prefsRepository.focusAppPackages,
-        prefsRepository.gridColumns,
-        prefsRepository.appOrder
-    ) { isFocusMode, isBlur, focusPackages, columns, order ->
-        Prefs(isFocusMode, isBlur, focusPackages, columns, order)
+        combine(
+            prefsRepository.isFocusModeEnabled,
+            prefsRepository.isBlurEnabled,
+            prefsRepository.focusAppPackages
+        ) { isFocusMode, isBlur, focusPackages ->
+            Triple(isFocusMode, isBlur, focusPackages)
+        },
+        combine(
+            prefsRepository.gridColumns,
+            prefsRepository.appOrder,
+            prefsRepository.widgetIds
+        ) { columns, order, widgetIds ->
+            Triple(columns, order, widgetIds)
+        }
+    ) { first, second ->
+        Prefs(
+            isFocusMode = first.first,
+            isBlur = first.second,
+            focusPackages = first.third,
+            columns = second.first,
+            appOrder = second.second,
+            widgetIds = second.third
+        )
     }
 
     val uiState: StateFlow<HomeUiState> = combine(
         _installedApps,
         _userPrefsFlow,
         _recentIntentions,
-        _searchQuery
-    ) { apps, prefs, intentions, query ->
+        _searchQuery,
+        prefsRepository.oneThingTask
+    ) { apps, prefs, intentions, query, oneThing ->
         
         val filteredApps = apps.map { app ->
             app.copy(isFocusMode = prefs.isFocusMode, isFocusApp = prefs.focusPackages.contains(app.packageName))
@@ -59,8 +76,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 
                 filteredApps.sortedWith(
                     compareBy<AppModel> { orderMap[it.packageName] ?: Int.MAX_VALUE }
-                        .thenByDescending { it.isFocusApp } // Tie-breaker if needed, or keeping focus apps logic secondary to order?
-                        // Actually, if user sets order, that should win. But new apps go to end.
+                        .thenByDescending { it.isFocusApp }
                         .thenBy { it.label.lowercase() }
                 )
             } else {
@@ -80,7 +96,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             isBlurEnabled = prefs.isBlur,
             recentIntentions = intentions,
             searchQuery = query,
-            gridColumns = prefs.columns
+            gridColumns = prefs.columns,
+            oneThingTask = oneThing,
+            widgetIds = prefs.widgetIds
         )
     }
     .flowOn(Dispatchers.Default)
@@ -123,6 +141,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun updateGridColumns(columns: Int) {
         prefsRepository.setGridColumns(columns)
     }
+    
+    fun updateWidgetIds(ids: List<Int>) {
+        prefsRepository.setWidgetIds(ids)
+    }
 
     fun toggleAppFocusStatus(packageName: String) {
         val currentPackages = prefsRepository.focusAppPackages.value
@@ -132,6 +154,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             currentPackages + packageName
         }
         prefsRepository.setFocusApps(newPackages)
+    }
+
+    fun setOneThingTask(task: String?) {
+        prefsRepository.setOneThingTask(task)
     }
 
     fun onIntentionSubmitted(app: AppModel, intention: String, onComplete: () -> Unit) {
@@ -151,7 +177,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val isBlur: Boolean,
         val focusPackages: Set<String>,
         val columns: Int,
-        val appOrder: List<String>
+        val appOrder: List<String>,
+        val widgetIds: List<Int>
     )
 }
 
@@ -161,5 +188,7 @@ data class HomeUiState(
     val isBlurEnabled: Boolean = false,
     val recentIntentions: List<Intention> = emptyList(),
     val searchQuery: String = "",
-    val gridColumns: Int = 4
+    val gridColumns: Int = 4,
+    val oneThingTask: String? = null,
+    val widgetIds: List<Int> = emptyList()
 )

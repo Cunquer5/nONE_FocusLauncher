@@ -12,9 +12,16 @@ import com.example.nonelauncher.ui.LauncherScreen
 import com.example.nonelauncher.ui.theme.NoneLauncherTheme
 
 class MainActivity : ComponentActivity() {
+    private var appWidgetHost: android.appwidget.AppWidgetHost? = null
+    private var appWidgetManager: android.appwidget.AppWidgetManager? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        appWidgetManager = android.appwidget.AppWidgetManager.getInstance(this)
+        appWidgetHost = android.appwidget.AppWidgetHost(this, APP_WIDGET_HOST_ID)
+        appWidgetHost?.startListening()
+
         enableEdgeToEdge()
         
         setContent {
@@ -23,9 +30,21 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Transparent
                 ) {
-                    LauncherScreen()
+                    LauncherScreen(
+                        appWidgetHost = appWidgetHost,
+                        appWidgetManager = appWidgetManager
+                    )
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        appWidgetHost?.stopListening()
+    }
+
+    companion object {
+        const val APP_WIDGET_HOST_ID = 1024
     }
 }
