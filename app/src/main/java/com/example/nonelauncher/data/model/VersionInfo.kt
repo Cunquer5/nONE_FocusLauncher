@@ -9,6 +9,19 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.2.0",
+        versionCode = 3,
+        releaseDate = "2026-01-21",
+        features = listOf(
+            "consistent brand theme black and orange, with black glass morphism",
+            "app image fit app icon in focus management carousal section",
+            "deafult orange wallpaper option given with, wallaper changes visible in modern ui mode",
+            "add/delete app icon and widgets in app grid in modern ui mode",
+            "card alignment properly set",
+            "dock item glow in orange colour when selected"
+        )
+    ),
+    VersionInfo(
         versionName = "1.1.0",
         versionCode = 2,
         releaseDate = "2026-01-16",
