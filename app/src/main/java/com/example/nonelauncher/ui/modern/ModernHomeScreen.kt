@@ -47,6 +47,7 @@ fun ModernHomeScreen(
     var showSettings by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
     var showOneThing by remember { mutableStateOf(false) }
+    var showWallpaperDialog by remember { mutableStateOf(false) }
 
     // Active Tab Logic for Dock
     val activeTab = remember(showAppDrawer, showSettings, showOneThing) {
@@ -69,9 +70,7 @@ fun ModernHomeScreen(
     var isMainTaskChecked by remember(oneThingTask) { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(OrangePrimary)
+        modifier = Modifier.fillMaxSize()
     ) {
         // Main Content: 1 Thing Display (Only visible when 1 Thing tab is active)
         if (showOneThing && oneThingTask != null && oneThingTask.isNotEmpty()) {
@@ -195,7 +194,7 @@ fun ModernHomeScreen(
                 onTaskSet = { task -> homeViewModel.setOneThingTask(task) },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 100.dp) // Gap for dock
+                    .padding(bottom = 120.dp) // Gap for dock
                     .padding(horizontal = 16.dp)
             )
         }
@@ -204,7 +203,7 @@ fun ModernHomeScreen(
             SettingsSheet(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 100.dp) // Leave space for dock
+                    .padding(bottom = 120.dp) // Leave space for dock
                     .padding(horizontal = 8.dp) // Little margin
                     .fillMaxHeight(0.85f),
                 recentIntentions = uiState.recentIntentions,
@@ -214,17 +213,7 @@ fun ModernHomeScreen(
                     showSettings = false
                 },
                 onWallpaperClick = {
-                    try {
-                        val intent =
-                            android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER)
-                        context.startActivity(
-                            android.content.Intent.createChooser(
-                                intent,
-                                "Select Wallpaper"
-                            )
-                        )
-                    } catch (e: Exception) {
-                    }
+                    showWallpaperDialog = true
                 },
                 onHistoryClick = {
                     showHistory = true
@@ -243,7 +232,7 @@ fun ModernHomeScreen(
                 onDismiss = { showHistory = false },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 100.dp) // Leave space for dock
+                    .padding(bottom = 120.dp) // Leave space for dock
                     .padding(horizontal = 8.dp) // Little margin - same as SettingsSheet
                     .fillMaxHeight(0.85f)
             )
@@ -309,7 +298,7 @@ fun ModernHomeScreen(
                 isBlurEnabled = uiState.isBlurEnabled,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 100.dp) // Leave space for dock
+                    .padding(bottom = 120.dp) // Leave space for dock
                     .padding(horizontal = 8.dp) // Little margin
                     .fillMaxHeight(0.85f)
             )
@@ -331,6 +320,38 @@ fun ModernHomeScreen(
                         } catch (_: Exception) {
                         }
                         appToLaunch = null
+                    }
+                }
+            )
+        }
+
+        // Wallpaper Selection Dialog
+        if (showWallpaperDialog) {
+            WallpaperSelectionDialog(
+                onDismiss = { showWallpaperDialog = false },
+                onOrangeColorSelected = {
+                    // Set solid orange wallpaper using WallpaperManager
+                    try {
+                        val wallpaperManager = android.app.WallpaperManager.getInstance(context)
+                        val orangeBitmap = android.graphics.Bitmap.createBitmap(
+                            1920, 1080, android.graphics.Bitmap.Config.ARGB_8888
+                        )
+                        val canvas = android.graphics.Canvas(orangeBitmap)
+                        canvas.drawColor(android.graphics.Color.parseColor("#FF4D00"))
+                        wallpaperManager.setBitmap(orangeBitmap)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                },
+                onCustomWallpaperClick = {
+                    // Open system wallpaper picker
+                    try {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER)
+                        context.startActivity(
+                            android.content.Intent.createChooser(intent, "Select Wallpaper")
+                        )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
             )

@@ -20,6 +20,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nonelauncher.ui.theme.GlassMorphism.dockGlassBackground
+import com.example.nonelauncher.ui.theme.Black
+import com.example.nonelauncher.ui.theme.OrangePrimary
+
 
 enum class DockItemType {
     PHONE, ONE_THING, APPS, SETTINGS, NONE
@@ -39,8 +43,7 @@ fun GlassDock(
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 32.dp)
             .height(80.dp)
-            .clip(RoundedCornerShape(40.dp))
-            .background(Color(0xFF221510)) // Dark brown bg
+            .dockGlassBackground()
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -60,9 +63,9 @@ fun GlassDock(
             // "1 Thing" Item
             Box(
                 modifier = Modifier
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .then(if (activeItem == DockItemType.ONE_THING) Modifier.background(Color.White.copy(alpha = 0.2f)) else Modifier)
+                    .height(63.dp)
+                    .clip(RoundedCornerShape(33.dp))
+                    .then(if (activeItem == DockItemType.ONE_THING) Modifier.background(Black.copy(alpha = 0.5f)) else Modifier)
                     .clickable(onClick = onOneThingClick)
                     .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 16.dp else 0.dp),
                 contentAlignment = Alignment.Center
@@ -74,7 +77,7 @@ fun GlassDock(
                     ) {
                         Text(
                             text = "1",
-                            color = Color.White,
+                            color = if (activeItem == DockItemType.ONE_THING) OrangePrimary else Color.White,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Normal
                         )
@@ -89,7 +92,7 @@ fun GlassDock(
                             // Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Thing", // Explicit request: "only the 'Thing' text"
-                                color = Color.White,
+                                color = OrangePrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 modifier = Modifier.padding(start = 4.dp)
@@ -105,7 +108,7 @@ fun GlassDock(
                 isActive = activeItem == DockItemType.APPS,
                 onClick = onAppsClick,
                 showLabel = true,
-                customIcon = { RoundedGridIcon() }
+                customIcon = { isActive -> RoundedGridIcon(isActive) }
             )
             
             DockItem(
@@ -120,19 +123,20 @@ fun GlassDock(
 }
 
 @Composable
-fun RoundedGridIcon() {
+fun RoundedGridIcon(isActive: Boolean = false) {
+    val iconColor = if (isActive) OrangePrimary else Color(0xFFE0E0E0)
     Column(
         verticalArrangement = Arrangement.spacedBy(3.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.size(26.dp) // Adjusted to fit nicely in 28dp area
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Box(Modifier.size(10.dp).background(Color(0xFFE0E0E0), RoundedCornerShape(3.dp)))
-            Box(Modifier.size(10.dp).background(Color(0xFFE0E0E0), RoundedCornerShape(3.dp)))
+            Box(Modifier.size(10.dp).background(iconColor, RoundedCornerShape(3.dp)))
+            Box(Modifier.size(10.dp).background(iconColor, RoundedCornerShape(3.dp)))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Box(Modifier.size(10.dp).background(Color(0xFFE0E0E0), RoundedCornerShape(3.dp)))
-            Box(Modifier.size(10.dp).background(Color(0xFFE0E0E0), RoundedCornerShape(3.dp)))
+            Box(Modifier.size(10.dp).background(iconColor, RoundedCornerShape(3.dp)))
+            Box(Modifier.size(10.dp).background(iconColor, RoundedCornerShape(3.dp)))
         }
     }
 }
@@ -144,13 +148,13 @@ fun DockItem(
     isActive: Boolean,
     onClick: () -> Unit,
     showLabel: Boolean = true,
-    customIcon: @Composable (() -> Unit)? = null
+    customIcon: @Composable ((Boolean) -> Unit)? = null
 ) {
     Box(
         modifier = Modifier
-            .height(48.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .then(if (isActive) Modifier.background(Color.White.copy(alpha = 0.2f)) else Modifier)
+            .height(63.dp)
+            .clip(RoundedCornerShape(33.dp))
+            .then(if (isActive) Modifier.background(Color.Black.copy(alpha = 0.65f)) else Modifier)
             .clickable(onClick = onClick)
             .padding(horizontal = if (isActive && showLabel) 16.dp else 0.dp),
         contentAlignment = Alignment.Center
@@ -161,12 +165,12 @@ fun DockItem(
                  contentAlignment = Alignment.Center
             ) {
                 if (customIcon != null) {
-                    customIcon()
+                    customIcon(isActive)
                 } else if (icon != null) {
                     Icon(
                         imageVector = icon,
                         contentDescription = label,
-                        tint = Color.White,
+                        tint = if (isActive) OrangePrimary else Color.White,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -181,7 +185,7 @@ fun DockItem(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = label,
-                        color = Color.White,
+                        color = if (isActive) OrangePrimary else Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )

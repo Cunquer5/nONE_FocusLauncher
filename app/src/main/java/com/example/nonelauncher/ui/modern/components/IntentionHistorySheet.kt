@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.local.entity.Intention
 import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.theme.GlassMorphism.cardGlassBackground
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -33,13 +34,22 @@ fun IntentionHistorySheet(
     Card(
         modifier = modifier.fillMaxSize(),
         shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF221510))
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha=0.89f))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // LAYER 1: Background with blur (BEHIND content)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .cardGlassBackground()
+            )
+            
+            // LAYER 2: Content on top (NO blur)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+            ) {
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -62,10 +72,10 @@ fun IntentionHistorySheet(
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier
-                        .background(Color(0xFF382922), CircleShape)
+                        .background(Color.Black, CircleShape)
                         .size(32.dp)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White.copy(0.7f), modifier = Modifier.size(16.dp))
+                    //Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White.copy(0.7f), modifier = Modifier.size(16.dp))
                 }
             }
 
@@ -91,6 +101,7 @@ fun IntentionHistorySheet(
                 }
             }
         }
+        }
     }
 }
 
@@ -100,7 +111,7 @@ fun HistoryItem(intention: Intention) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF382922))
+            .background(Color.Black.copy(alpha = 0.6f))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -110,7 +121,7 @@ fun HistoryItem(intention: Intention) {
                 .background(Color.White.copy(0.1f), RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center
         ) {
-             Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null, tint = Color.White.copy(0.7f))
+             //Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null, tint = Color.White.copy(0.7f))
         }
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -133,3 +144,4 @@ fun HistoryItem(intention: Intention) {
         }
     }
 }
+

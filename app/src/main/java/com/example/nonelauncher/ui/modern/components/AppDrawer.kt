@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.ui.components.AppIcon
+import com.example.nonelauncher.ui.theme.Black
+import com.example.nonelauncher.ui.theme.GlassMorphism.cardGlassBackground
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -87,13 +89,22 @@ fun AppDrawer(
     Card(
         modifier = modifier.fillMaxSize(),
         shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF221510))
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha=0.5f))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // LAYER 1: Background with blur (BEHIND content)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .cardGlassBackground()
+            )
+            
+            // LAYER 2: Content on top (NO blur)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
             // Search Bar
             TextField(
                 value = searchQuery,
@@ -101,19 +112,19 @@ fun AppDrawer(
                 placeholder = { 
                     Text(
                         stringResource(com.example.nonelauncher.R.string.search_apps_widgets), 
-                        color = Color.White.copy(0.5f)
+                        color = Color.White.copy(0.8f)
                     ) 
                 },
                 leadingIcon = { 
                     Icon(
                         Icons.Default.Search, 
                         contentDescription = stringResource(com.example.nonelauncher.R.string.action_search), 
-                        tint = Color.White.copy(0.5f)
+                        tint = Color.White.copy(0.8f)
                     ) 
                 },
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFF382922),
-                    unfocusedContainerColor = Color(0xFF382922),
+                    focusedContainerColor = Color.Black.copy(alpha = 0.5f),
+                    unfocusedContainerColor = Color.Black.copy(alpha = 0.5f),
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     focusedTextColor = Color.White,
@@ -168,10 +179,11 @@ fun AppDrawer(
 
                                 DropdownMenu(
                                     expanded = showMenu,
-                                    onDismissRequest = { showMenu = false }
+                                    onDismissRequest = { showMenu = false },
+                                    modifier = Modifier.background(Color.Black.copy(alpha = 0.7f))
                                 ) {
                                     DropdownMenuItem(
-                                        text = { Text("Remove Widget") },
+                                        text = { Text("Remove Widget", color = Color.White) },
                                         onClick = {
                                             onWidgetRemoved(appWidgetId)
                                             appWidgetHost.deleteAppWidgetId(appWidgetId)
@@ -192,7 +204,7 @@ fun AppDrawer(
                             .size(widgetCardWidth)
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(24.dp))
-                            .background(Color(0xFF382922).copy(alpha = 0.5f))
+                            .background(Black.copy(alpha = 0.7f))
                             .clickable {
                                 if (appWidgetHost != null) {
                                     val newId = appWidgetHost.allocateAppWidgetId()
@@ -234,9 +246,10 @@ fun AppDrawer(
                         gridColumns = 4,
                         isGrayscale = isAffectedByFocus,
                         isBlurred = isAffectedByFocus && isBlurEnabled,
-                        isUninstallable = false
+                        isUninstallable = true
                     )
                 }
+            }
             }
         }
     }

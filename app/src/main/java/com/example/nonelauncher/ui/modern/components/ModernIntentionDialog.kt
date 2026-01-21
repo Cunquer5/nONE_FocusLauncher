@@ -41,10 +41,10 @@ fun ModernIntentionDialog(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 6.dp),
                 shape = RoundedCornerShape(32.dp),
                 color = surfaceColor,
-                tonalElevation = 8.dp
+                tonalElevation = 6.dp
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp)
@@ -56,7 +56,7 @@ fun ModernIntentionDialog(
                             bitmap = app.icon,
                             contentDescription = app.label,
                             modifier = Modifier
-                                .size(64.dp)
+                                .size(85.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFFEFEFEF))
                         )
@@ -102,10 +102,34 @@ ${app.label}?""",
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.BottomEnd
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Cancel Button
+                        Button(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE8E8E8)
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .shadow(4.dp, RoundedCornerShape(50))
+                        ) {
+                            Text(
+                                text = "Cancel",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Proceed Button
                         Button(
                             onClick = { 
                                 if (intentionText.isNotBlank()) onConfirm(intentionText)
@@ -115,39 +139,21 @@ ${app.label}?""",
                             ),
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                             shape = RoundedCornerShape(50),
-                            modifier = Modifier.shadow(4.dp, RoundedCornerShape(50))
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .shadow(4.dp, RoundedCornerShape(50))
                         ) {
                             Text(
                                 text = "Proceed →",
                                 color = primaryColor,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
                         }
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Maybe later",
-                    color = Color.White.copy(0.8f),
-                    modifier = Modifier
-                        .clickable { onDismiss() }
-                        .padding(8.dp),
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.width(24.dp))
-                Text(
-                    text = "Set limit",
-                    color = Color.White.copy(0.8f),
-                    modifier = Modifier.padding(8.dp),
-                    fontWeight = FontWeight.Medium
-                )
             }
         }
     }

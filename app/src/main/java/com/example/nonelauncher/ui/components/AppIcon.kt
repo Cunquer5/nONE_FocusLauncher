@@ -2,6 +2,7 @@ package com.example.nonelauncher.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -73,10 +74,11 @@ fun AppIcon(
         Box {
              DropdownMenu(
                 expanded = showMenu,
-                onDismissRequest = { showMenu = false }
+                onDismissRequest = { showMenu = false },
+                modifier = Modifier.background(Color.Black.copy(alpha = 0.7f))
             ) {
                 DropdownMenuItem(
-                    text = { Text("App Info") },
+                    text = { Text("App Info", color = Color.White) },
                     onClick = { 
                         showMenu = false
                         onAppInfo() 
@@ -84,12 +86,12 @@ fun AppIcon(
                 )
                 if (isUninstallable) {
                     DropdownMenuItem(
-                        text = { Text("Uninstall") },
+                        text = { Text("Uninstall", color = Color.White) },
                         onClick = { 
                             showMenu = false
                             onUninstall() 
                     }
-                )
+                    )
                 }
             }
         }
@@ -105,6 +107,8 @@ fun AppIcon(
         Box(
             modifier = Modifier
                 .size(iconSize)
+                .clip(iconShape)
+                .background(Color.Black.copy(alpha = 0.3f))
                 .graphicsLayer {
                     shape = iconShape
                     clip = true

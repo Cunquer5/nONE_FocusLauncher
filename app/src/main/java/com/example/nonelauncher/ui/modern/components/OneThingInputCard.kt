@@ -5,12 +5,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.theme.OrangePrimaryDark
+import com.example.nonelauncher.ui.theme.GlassMorphism.cardGlassBackground
+import com.example.nonelauncher.ui.theme.BlackGlass
 
 @Composable
 fun OneThingInputCard(
@@ -19,22 +23,19 @@ fun OneThingInputCard(
 ) {
     var mainTask by remember { mutableStateOf("") }
     var actionStep by remember { mutableStateOf("") }
-    
-    // Custom colors from image
-    val inputFieldColor = Color(0xFFD6694D) // Darker orange/red for input bg
-    val buttonTextColor = Color(0xFFE05A34) // Deep orange
 
-    // Glass/Translucent Card Overlay
+    // Glass/Translucent Card Overlay - Black glass morphism effect
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
-            .background(Color.White.copy(alpha = 0.2f)) // Slightly more visible glass
-            .padding(24.dp)
+            .background(BlackGlass.copy(alpha = 0.6f))
+            .padding(24.dp),
+        contentAlignment = Alignment.TopStart
     ) {
         Column {
             Text(
-                "NEW 1 THING", 
+                "ADD 1 THING",
                 style = MaterialTheme.typography.labelSmall, 
                 color = Color.White.copy(alpha = 0.8f),
                 fontWeight = FontWeight.Bold
@@ -46,13 +47,13 @@ fun OneThingInputCard(
                 onValueChange = { mainTask = it },
                 placeholder = { Text("What's the main task?", color = Color.White.copy(0.6f)) },
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = inputFieldColor,
-                    unfocusedContainerColor = inputFieldColor,
+                    focusedContainerColor = Color.Black.copy(alpha = 0.5f),
+                    unfocusedContainerColor = Color.Black.copy(alpha = 0.4f),
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    cursorColor = Color.White
+                    cursorColor = OrangePrimary
                 ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -71,15 +72,15 @@ fun OneThingInputCard(
             TextField(
                 value = actionStep,
                 onValueChange = { actionStep = it },
-                placeholder = { Text("One articulate action step...", color = Color.White.copy(0.6f)) },
+                placeholder = { Text("Articulate action steps...", color = Color.White.copy(0.6f)) },
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = inputFieldColor,
-                    unfocusedContainerColor = inputFieldColor,
+                    focusedContainerColor = Color.Black.copy(alpha = 0.5f),
+                    unfocusedContainerColor = Color.Black.copy(alpha = 0.4f),
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    cursorColor = Color.White
+                    cursorColor = OrangePrimary
                 ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -97,10 +98,10 @@ fun OneThingInputCard(
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Set Task", color = buttonTextColor, fontWeight = FontWeight.Bold)
+                Text("Set Task", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -21,12 +21,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.local.entity.Intention
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.theme.GlassMorphism.cardGlassBackground
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -44,21 +46,30 @@ fun SettingsSheet(
     isBlur: Boolean,
     modifier: Modifier = Modifier
 ) {
-    // Custom Background Card
+    // Custom Background Card with glass morphism
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .fillMaxHeight(), // Occupy available space passed by parent
+            .fillMaxHeight(),
         shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF221510)) // Deep brown match
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha=0.6f))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // LAYER 1: Background with blur (BEHIND content)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .cardGlassBackground()
+            )
+            
+            // LAYER 2: Content on top (NO blur)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
             // Header
             Column {
                 Text(
@@ -79,15 +90,15 @@ fun SettingsSheet(
             // Wallpaper Button
             Button(
                 onClick = onWallpaperClick,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
-                 Icon(Icons.Default.Wallpaper, contentDescription = null, tint = Color.Black)
-                 Spacer(modifier = Modifier.width(8.dp))
-                 Text("Wallpaper Selection", color = Color.Black, fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.Wallpaper, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Wallpaper Selection", color = Color.White, fontWeight = FontWeight.Bold)
             }
 
             // Intentions Log - Scrollable
@@ -122,8 +133,8 @@ fun SettingsSheet(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Focus App Management", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(22.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp)
                 ) {
                     items(focusApps) { app ->
                         FocusAppItem(app, onToggle = { onToggleFocusApp(app) })
@@ -151,6 +162,7 @@ fun SettingsSheet(
                 }
             )
         }
+        }
     }
 }
 
@@ -161,7 +173,7 @@ fun ModeToggle(isModern: Boolean, onLegacyClick: () -> Unit) {
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF382922)), 
+            .background(Color.Black.copy(alpha = 0.5f)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -170,10 +182,10 @@ fun ModeToggle(isModern: Boolean, onLegacyClick: () -> Unit) {
                 .fillMaxHeight()
                 .padding(4.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (isModern) Color(0xFF4E3D35) else Color.Transparent), 
+                .background(if (isModern) OrangePrimary else Color.Black.copy(alpha = 0.4f)), 
             contentAlignment = Alignment.Center
         ) {
-            Text("Modern", color = if (isModern) Color.White else Color.White.copy(0.4f), fontWeight = FontWeight.SemiBold)
+            Text("Modern", color = Color.White, fontWeight = FontWeight.SemiBold)
         }
         Box(
             modifier = Modifier
@@ -182,10 +194,10 @@ fun ModeToggle(isModern: Boolean, onLegacyClick: () -> Unit) {
                 .padding(4.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .clickable { onLegacyClick() }
-                .background(if (!isModern) Color(0xFF4E3D35) else Color.Transparent),
+                .background(if (!isModern) OrangePrimary else Color.Black.copy(alpha = 0.4f)),
             contentAlignment = Alignment.Center
         ) {
-            Text("Legacy", color = if (!isModern) Color.White else Color.White.copy(0.4f), fontWeight = FontWeight.SemiBold)
+            Text("Legacy", color = Color.White, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -196,7 +208,7 @@ fun IntentionCard(intention: Intention) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF382922))
+            .background(Color.Black.copy(alpha = 0.6f))
             .padding(16.dp)
     ) {
         Text(
@@ -227,13 +239,15 @@ fun FocusAppItem(app: AppModel, onToggle: () -> Unit) {
             modifier = Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(if (app.isFocusApp) OrangePrimary else Color(0xFF382922)),
+                .background(if (app.isFocusApp) OrangePrimary else Color.Black.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
-             Image(
+            Image(
                 bitmap = app.icon,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
+                contentDescription = app.label,
+                modifier = Modifier
+                    .size(56.dp),
+                contentScale = ContentScale.Fit,
                 colorFilter = if (!app.isFocusApp) ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }) else null
             )
         }
@@ -260,7 +274,7 @@ fun BottomModeSelector(isFocus: Boolean, isBlur: Boolean, onNormal: () -> Unit, 
             .fillMaxWidth()
             .height(56.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.Black), // Very dark background for the pill
+            .background(Color.Black.copy(alpha = 0.7f)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Normal
@@ -274,7 +288,7 @@ fun BottomModeSelector(isFocus: Boolean, isBlur: Boolean, onNormal: () -> Unit, 
                 .clickable(onClick = onNormal), 
             contentAlignment = Alignment.Center
         ) {
-            Text("Normal", color = if (selection == 0) Color.Black else Color.White.copy(0.4f), fontWeight = if(selection==0) FontWeight.Bold else FontWeight.Normal)
+            Text("Normal", color = if (selection == 0) Color.White else Color.White.copy(0.4f), fontWeight = if(selection==0) FontWeight.Bold else FontWeight.Normal)
         }
         
         // Focus
@@ -288,7 +302,7 @@ fun BottomModeSelector(isFocus: Boolean, isBlur: Boolean, onNormal: () -> Unit, 
                 .clickable(onClick = onFocus), 
             contentAlignment = Alignment.Center
         ) {
-            Text("Focus", color = if (selection == 1) Color.Black else Color.White.copy(0.4f), fontWeight = if(selection==1) FontWeight.Bold else FontWeight.Normal)
+            Text("Focus", color = if (selection == 1) Color.White else Color.White.copy(0.4f), fontWeight = if(selection==1) FontWeight.Bold else FontWeight.Normal)
         }
 
         // Blur
@@ -302,7 +316,7 @@ fun BottomModeSelector(isFocus: Boolean, isBlur: Boolean, onNormal: () -> Unit, 
                 .clickable(onClick = onBlur), 
             contentAlignment = Alignment.Center
         ) {
-            Text("Blur", color = if (selection == 2) Color.Black else Color.White.copy(0.4f), fontWeight = if(selection==2) FontWeight.Bold else FontWeight.Normal)
+            Text("Blur", color = if (selection == 2) Color.White else Color.White.copy(0.4f), fontWeight = if(selection==2) FontWeight.Bold else FontWeight.Normal)
         }
     }
 }
