@@ -17,7 +17,9 @@ val Changelog = listOf(
             "Dedicated Full-screen Widget Grid with dynamic fitting and dynamic height",
             "Clean Page 1 App Grid with widget carousel removed",
             "Improved horizontal swipe navigation between sections",
-            "Enhanced widget management with long-press context menus"
+            "Enhanced widget management with long-press context menus",
+            "one thing todo with optional steps breakdown-dynamic task input box, vanishes when incomplete task present and comesback when task checked off",
+            "emphasis on 1 thing in dock" 
         )
     ),
     VersionInfo(
