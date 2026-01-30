@@ -9,6 +9,18 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.3.0",
+        versionCode = 4,
+        releaseDate = "2026-01-30",
+        features = listOf(
+            "Dual-section swipeable Modern App Drawer (Apps vs Widgets)",
+            "Dedicated Full-screen Widget Grid with dynamic fitting and dynamic height",
+            "Clean Page 1 App Grid with widget carousel removed",
+            "Improved horizontal swipe navigation between sections",
+            "Enhanced widget management with long-press context menus"
+        )
+    ),
+    VersionInfo(
         versionName = "1.2.0",
         versionCode = 3,
         releaseDate = "2026-01-21",

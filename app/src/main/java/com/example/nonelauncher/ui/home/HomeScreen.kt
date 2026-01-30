@@ -109,8 +109,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nonelauncher.data.local.entity.Intention
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.ui.MainViewModel
+import com.example.nonelauncher.ui.components.AppIcon
 import com.example.nonelauncher.ui.components.IntentionDialog
 import com.example.nonelauncher.ui.modes.LauncherUiMode
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism.rememberHazeState
+import com.example.nonelauncher.ui.theme.AppGridSpacing
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -126,7 +129,10 @@ fun HomeScreen(
     val uiState by homeViewModel.uiState.collectAsState()
     val allIntentions by homeViewModel.allIntentions.collectAsState(initial = emptyList())
     val uiMode by mainViewModel.uiMode.collectAsState(initial = LauncherUiMode.LEGACY)
-    
+    val (columnSpacing, rowSpacing) = AppGridSpacing.getSpacingForColumns(uiState.gridColumns)
+
+    val hazeState = rememberHazeState()
+
     val context = LocalContext.current
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showFullLog by remember { mutableStateOf(false) }
@@ -135,15 +141,16 @@ fun HomeScreen(
 
     val density = LocalDensity.current
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    
+    val navigationBarPadding =
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     val gridState = rememberLazyGridState()
     var isSearchVisible by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
-    var searchTextFieldValue by remember { 
-        mutableStateOf(TextFieldValue(uiState.searchQuery, TextRange(uiState.searchQuery.length))) 
+    var searchTextFieldValue by remember {
+        mutableStateOf(TextFieldValue(uiState.searchQuery, TextRange(uiState.searchQuery.length)))
     }
 
     val nestedScrollConnection = remember {
@@ -186,9 +193,10 @@ fun HomeScreen(
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(nestedScrollConnection)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 AnimatedVisibility(
@@ -204,9 +212,9 @@ fun HomeScreen(
                     ) {
                         OutlinedTextField(
                             value = searchTextFieldValue,
-                            onValueChange = { 
+                            onValueChange = {
                                 searchTextFieldValue = it
-                                homeViewModel.onSearchQueryChanged(it.text) 
+                                homeViewModel.onSearchQueryChanged(it.text)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -221,7 +229,9 @@ fun HomeScreen(
                             shape = RoundedCornerShape(24.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(
+                                    alpha = 0.7f
+                                ),
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 unfocusedBorderColor = Color.Transparent
                             ),
@@ -242,12 +252,13 @@ fun HomeScreen(
                         top = if (isSearchVisible) 16.dp else statusBarPadding + 24.dp,
                         bottom = navigationBarPadding + 80.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(rowSpacing),
+                    horizontalArrangement = Arrangement.spacedBy(columnSpacing)
                 ) {
                     items(uiState.apps, key = { it.packageName }) { app ->
                         val isAffectedByFocus = uiState.isFocusModeEnabled && !app.isFocusApp
-                        val isSystemOrEssential = app.isEssential || app.packageName == "com.android.settings" || app.packageName == context.packageName
+                        val isSystemOrEssential =
+                            app.isEssential || app.packageName == "com.android.settings" || app.packageName == context.packageName
 
                         AppIcon(
                             app = app,
@@ -256,8 +267,9 @@ fun HomeScreen(
                             gridColumns = uiState.gridColumns,
                             onAppClick = {
                                 if (isSystemOrEssential) {
-                                     val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                     if (launchIntent != null) context.startActivity(launchIntent)
+                                    val launchIntent =
+                                        context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                    if (launchIntent != null) context.startActivity(launchIntent)
                                 } else {
                                     appToLaunch = app
                                 }
@@ -275,16 +287,18 @@ fun HomeScreen(
                             },
                             onAppInfo = {
                                 try {
-                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                        data = Uri.fromParts("package", app.packageName, null)
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    }
+                                    val intent =
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data = Uri.fromParts("package", app.packageName, null)
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        }
                                     context.startActivity(intent)
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                 }
                             },
-                            isUninstallable = !isSystemOrEssential
+                            isUninstallable = !isSystemOrEssential,
+                            hazeState = hazeState
                         )
                     }
                 }
@@ -296,10 +310,10 @@ fun HomeScreen(
                 onDismissRequest = { showSettingsSheet = false },
                 sheetState = sheetState,
                 scrimColor = Color.Black.copy(alpha = 0.32f),
-                containerColor = Color.Transparent, 
+                containerColor = Color.Transparent,
                 tonalElevation = 0.dp,
-                dragHandle = null, 
-                windowInsets = WindowInsets(0, 0, 0, 0) 
+                dragHandle = null,
+                windowInsets = WindowInsets(0, 0, 0, 0)
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Spacer(
@@ -311,7 +325,7 @@ fun HomeScreen(
                                 indication = null
                             ) { showSettingsSheet = false }
                     )
-                    
+
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.surface,
@@ -327,10 +341,14 @@ fun HomeScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(32.dp, 4.dp)
-                                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
+                                        .background(
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                alpha = 0.4f
+                                            ), CircleShape
+                                        )
                                 )
                             }
-                            
+
                             SettingsContent(
                                 isFocusModeEnabled = uiState.isFocusModeEnabled,
                                 onToggleFocusMode = { homeViewModel.toggleFocusMode() },
@@ -342,7 +360,12 @@ fun HomeScreen(
                                 onToggleAppFocus = { homeViewModel.toggleAppFocusStatus(it.packageName) },
                                 onChangeWallpaper = {
                                     val intent = Intent(Intent.ACTION_SET_WALLPAPER)
-                                    context.startActivity(Intent.createChooser(intent, "Select Wallpaper"))
+                                    context.startActivity(
+                                        Intent.createChooser(
+                                            intent,
+                                            "Select Wallpaper"
+                                        )
+                                    )
                                 },
                                 recentIntentions = uiState.recentIntentions,
                                 onShowFullLog = { showFullLog = true },
@@ -354,14 +377,14 @@ fun HomeScreen(
                 }
             }
         }
-        
+
         if (showFullLog) {
             FullIntentionLogDialog(
                 intentions = allIntentions,
                 onDismiss = { showFullLog = false }
             )
         }
-        
+
         val currentApp = appToLaunch
         if (currentApp != null) {
             IntentionDialog(
@@ -370,7 +393,8 @@ fun HomeScreen(
                 onConfirm = { intention ->
                     homeViewModel.onIntentionSubmitted(currentApp, intention) {
                         try {
-                            val launchIntent = context.packageManager.getLaunchIntentForPackage(currentApp.packageName)
+                            val launchIntent =
+                                context.packageManager.getLaunchIntentForPackage(currentApp.packageName)
                             if (launchIntent != null) {
                                 context.startActivity(launchIntent)
                             }
@@ -383,116 +407,7 @@ fun HomeScreen(
             )
         }
     }
-}
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun AppIcon(
-    app: AppModel,
-    isGrayscale: Boolean,
-    isBlurred: Boolean,
-    gridColumns: Int,
-    onAppClick: (AppModel) -> Unit,
-    onUninstall: () -> Unit,
-    onAppInfo: () -> Unit,
-    isUninstallable: Boolean
-) {
-    var showMenu by remember { mutableStateOf(false) }
-    val iconSize = when (gridColumns) {
-        4 -> 56.dp
-        5 -> 48.dp
-        6 -> 40.dp
-        else -> 56.dp
-    }
-    
-    val blurRadius = when (gridColumns) {
-        4 -> 8.dp
-        5 -> 6.dp
-        6 -> 4.dp
-        else -> 8.dp
-    }
-
-    val iconShape = RoundedCornerShape(22)
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(iconShape)
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = rememberRipple(bounded = true, color = Color.Gray),
-                onClick = { onAppClick(app) },
-                onLongClick = { showMenu = true }
-            )
-            .padding(4.dp)
-    ) {
-        Box {
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("App Info") },
-                    onClick = { 
-                        showMenu = false
-                        onAppInfo() 
-                    }
-                )
-                if (isUninstallable) {
-                    DropdownMenuItem(
-                        text = { Text("Uninstall") },
-                        onClick = { 
-                            showMenu = false
-                            onUninstall() 
-                    }
-                )
-                }
-            }
-        }
-        val colorFilter = remember(isGrayscale) {
-            if (isGrayscale) {
-                ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
-            } else {
-                null
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .size(iconSize)
-                .graphicsLayer {
-                    shape = iconShape
-                    clip = true
-                    if (isGrayscale) {
-                        alpha = 0.5f
-                    }
-                }
-        ) {
-            Image(
-                bitmap = app.icon,
-                contentDescription = app.label,
-                colorFilter = colorFilter,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(
-                        if (isBlurred) Modifier.blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                        else Modifier
-                    )
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        Text(
-            text = app.label,
-            fontSize = if (gridColumns > 5) 10.sp else 12.sp,
-            lineHeight = if (gridColumns > 5) 12.sp else 14.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            color = if (isGrayscale) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface
-        )
-    }
 }
 
 

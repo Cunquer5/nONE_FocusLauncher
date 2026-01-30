@@ -8,9 +8,13 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface IntentionDao {
+    
     @Insert
-    suspend fun insertIntention(intention: Intention)
-
+    suspend fun insertIntention(intention: Intention): Long
+    
     @Query("SELECT * FROM intentions ORDER BY timestamp DESC")
     fun getAllIntentions(): Flow<List<Intention>>
+    
+    @Query("DELETE FROM intentions")
+    suspend fun clearAllIntentions()
 }

@@ -1,13 +1,17 @@
 package com.example.nonelauncher.data.local
 
-import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import android.content.Context
 import com.example.nonelauncher.data.local.dao.IntentionDao
 import com.example.nonelauncher.data.local.entity.Intention
 
-@Database(entities = [Intention::class], version = 1, exportSchema = false)
+@Database(
+    entities = [Intention::class],
+    version = 1,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun intentionDao(): IntentionDao
 
@@ -20,7 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "intentions_db"
+                    "app_database"
                 ).build()
                 INSTANCE = instance
                 instance

@@ -29,6 +29,9 @@ import com.example.nonelauncher.ui.modern.components.*
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+
 
 @Composable
 fun ModernHomeScreen(
@@ -36,20 +39,25 @@ fun ModernHomeScreen(
     appWidgetManager: android.appwidget.AppWidgetManager? = null,
     mainViewModel: MainViewModel = viewModel(),
     homeViewModel: HomeViewModel = viewModel(),
-    onOpenSettings: () -> Unit // Kept for compatibility
+    onOpenSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val uiState by homeViewModel.uiState.collectAsState()
-    val scope = rememberCoroutineScope() // ...
+    val allIntentions by homeViewModel.allIntentions.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+    val hazeState = remember { HazeState() }
 
-    // Sheets state
     var showAppDrawer by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
     var showOneThing by remember { mutableStateOf(false) }
     var showWallpaperDialog by remember { mutableStateOf(false) }
+    var appToLaunch by remember { mutableStateOf<AppModel?>(null) }
+    
+    // State for 1 Thing card visibility
+    var showInputCard by remember { mutableStateOf(false) }
+    var showTaskDisplay by remember { mutableStateOf(false) }
 
-    // Active Tab Logic for Dock
     val activeTab = remember(showAppDrawer, showSettings, showOneThing) {
         when {
             showSettings -> DockItemType.SETTINGS
@@ -59,142 +67,47 @@ fun ModernHomeScreen(
         }
     }
 
-    // Intention Logic
-    var appToLaunch by remember { mutableStateOf<AppModel?>(null) }
-
-    // Persistent 1 Thing
-    val oneThingTask = uiState.oneThingTask
+    // Task completion handlers
+    val onTaskSet: (String) -> Unit = { task ->
+        homeViewModel.setOneThingTask(task)
+        showInputCard = false
+        showTaskDisplay = true
+    }
     
-    // Local state for visually tracking checked subtasks
+    val onMainTaskCompleted: () -> Unit = {
+        homeViewModel.setOneThingTask(null)
+        showTaskDisplay = false
+        showInputCard = true
+    }
+
+    val oneThingTask = uiState.oneThingTask
     var checkedSubtasks by remember(oneThingTask) { mutableStateOf(setOf<Int>()) }
     var isMainTaskChecked by remember(oneThingTask) { mutableStateOf(false) }
 
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Main Content: 1 Thing Display (Only visible when 1 Thing tab is active)
-        if (showOneThing && oneThingTask != null && oneThingTask.isNotEmpty()) {
-            val tasks = oneThingTask.split("\n").filter { it.isNotBlank() }
-            val mainTask = tasks.firstOrNull() ?: ""
-            val subTasks = tasks.drop(1)
 
-            Column(
+
+        // Main Content: 1 Thing Display (Only visible when task exists and showTaskDisplay is true)
+        if (showOneThing && showTaskDisplay && !oneThingTask.isNullOrEmpty()) {
+            OneThingTaskDisplay(
+                task = oneThingTask,
+                onMainTaskCompleted = onMainTaskCompleted,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 32.dp)
-                    .padding(bottom = 200.dp, top = 80.dp), // Push up for input card, add top padding
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.Top
-            ) {
-                // Main Task
-                Row(verticalAlignment = Alignment.Top) {
-                    // Large Circle Outline - Checking this off clears everything
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .padding(top = 8.dp)
-                            .border(3.dp, Color.White, CircleShape)
-                            .clickable { 
-                                if (!isMainTaskChecked) {
-                                    isMainTaskChecked = true
-                                    scope.launch {
-                                        delay(5000L)
-                                        homeViewModel.setOneThingTask(null)
-                                        checkedSubtasks = emptySet()
-                                    }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isMainTaskChecked) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(20.dp))
-                    Text(
-                        text = mainTask,
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            lineHeight = 44.sp,
-                            textDecoration = if (isMainTaskChecked) TextDecoration.LineThrough else null
-                        ),
-                        color = if (isMainTaskChecked) Color.White.copy(alpha = 0.5f) else Color.White,
-                        textAlign = TextAlign.Start
-                    )
-                }
-
-                if (subTasks.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(32.dp))
-                    
-                    subTasks.forEachIndexed { index, subTask ->
-                        val isChecked = checkedSubtasks.contains(index)
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .padding(vertical = 12.dp)
-                                .clickable { 
-                                    checkedSubtasks = if (isChecked) {
-                                        checkedSubtasks - index
-                                    } else {
-                                        checkedSubtasks + index
-                                    }
-                                }
-                        ) {
-                            // Small Solid Dot or Checkmark
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .background(
-                                        if (isChecked) Color.White.copy(alpha = 0.3f) 
-                                        else Color.White.copy(alpha = 0.8f), 
-                                        CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isChecked) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(24.dp))
-                            
-                            Text(
-                                text = subTask,
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 18.sp,
-                                    textDecoration = if (isChecked) TextDecoration.LineThrough else null
-                                ),
-                                color = if (isChecked) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.9f),
-                                textAlign = TextAlign.Start
-                            )
-                        }
-                    }
-                }
-            }
+                    .padding(top = 40.dp, bottom = 120.dp)
+                    .padding(horizontal = 16.dp)
+            )
         }
 
-        // 1 Thing Input Overlay (Only visible when 1 Thing tab is active)
-        if (showOneThing) {
-            // Background Box - Now non-clickable so user must use navbar to close
-            Box(
-                modifier = Modifier.fillMaxSize()
-            )
-
+        // 1 Thing Input Overlay (Only visible when showInputCard is true)
+        if (showOneThing && showInputCard) {
             OneThingInputCard(
-                onTaskSet = { task -> homeViewModel.setOneThingTask(task) },
+                onTaskSet = onTaskSet,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 120.dp) // Gap for dock
+                    .padding(bottom = 120.dp)
                     .padding(horizontal = 16.dp)
             )
         }
@@ -203,8 +116,8 @@ fun ModernHomeScreen(
             SettingsSheet(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 120.dp) // Leave space for dock
-                    .padding(horizontal = 8.dp) // Little margin
+                    .padding(bottom = 120.dp)
+                    .padding(horizontal = 8.dp)
                     .fillMaxHeight(0.85f),
                 recentIntentions = uiState.recentIntentions,
                 focusApps = uiState.apps,
@@ -212,11 +125,10 @@ fun ModernHomeScreen(
                     mainViewModel.setUiMode(LauncherUiMode.LEGACY)
                     showSettings = false
                 },
-                onWallpaperClick = {
-                    showWallpaperDialog = true
-                },
-                onHistoryClick = {
-                    showHistory = true
+                onWallpaperClick = { showWallpaperDialog = true },
+                onHistoryClick = { 
+                    showSettings = false
+                    showHistory = true 
                 },
                 onToggleFocusApp = { homeViewModel.toggleAppFocusStatus(it.packageName) },
                 onToggleFocusMode = { homeViewModel.toggleFocusMode() },
@@ -228,8 +140,11 @@ fun ModernHomeScreen(
 
         if (showHistory) {
             IntentionHistorySheet(
-                intentions = uiState.recentIntentions,
-                onDismiss = { showHistory = false },
+                intentions = allIntentions,
+                onDismiss = { 
+                    showHistory = false
+                    showSettings = true
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 120.dp) // Leave space for dock
@@ -250,10 +165,21 @@ fun ModernHomeScreen(
                 }
             },
             onOneThingClick = {
-                if (showOneThing) showOneThing = false else {
+                if (showOneThing) {
+                    showOneThing = false
+                    showInputCard = false
+                    showTaskDisplay = false
+                } else {
                     showOneThing = true
                     showSettings = false
                     showAppDrawer = false
+                    if (!oneThingTask.isNullOrEmpty()) {
+                        showTaskDisplay = true
+                        showInputCard = false
+                    } else {
+                        showInputCard = true
+                        showTaskDisplay = false
+                    }
                 }
             },
             onAppsClick = {

@@ -10,6 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -17,7 +18,8 @@ import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = OrangePrimary,
-    background = OrangePrimary, // App background is orange
+    //background = OrangePrimary, // App background is orange
+    background = Color.Transparent,
     surface = Black,
     onPrimary = White,
     onBackground = White,
@@ -26,7 +28,8 @@ private val DarkColorScheme = darkColorScheme(
 
 private val LightColorScheme = lightColorScheme(
     primary = OrangePrimary,
-    background = OrangePrimary, // App background is orange
+    //background = OrangePrimary, // App background is orange
+    background = Color.Transparent,
     surface = White,
     onPrimary = White,
     onBackground = White, // Text on orange should be white usually? Or dark? PRD images show white text on orange.

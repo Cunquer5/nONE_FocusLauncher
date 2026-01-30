@@ -36,6 +36,15 @@
 
 ## Changelog
 
+### v1.3.0 - January 30, 2026
+
+#### Features
+- **Dual-Section Swipeable App Drawer**: Separated app grid and widgets into two distinct swipeable pages for a cleaner interface.
+- **Dedicated Widget Grid**: Full-screen widget management page with dynamic fitting and reflowing.
+- **Dynamic Widget Height**: Widgets now automatically adjust their height based on their requirements while maintaining a minimum touch target.
+- **Clean App Grid**: Removed the widget carousel from the first page of the app drawer to focus purely on application access.
+- **Improved Navigation**: Added page indicators and smoother horizontal scrolling between app and widget sections.
+
 ### v1.1.0 - January 21, 2026
 
 #### Features

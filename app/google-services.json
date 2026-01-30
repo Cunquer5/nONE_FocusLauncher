@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "334845499147",
+    "project_id": "nonelauncher",
+    "storage_bucket": "nonelauncher.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:334845499147:android:1642742bcdf380e93e340e",
+        "android_client_info": {
+          "package_name": "com.example.nonelauncher"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHCeLfry33fYL3vG6FX9GMhXRWMNDrJ48"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

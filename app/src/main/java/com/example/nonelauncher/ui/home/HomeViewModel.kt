@@ -27,7 +27,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _installedApps = MutableStateFlow<List<AppModel>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
 
-    private val _recentIntentions = intentionRepository.getAllIntentions().map { it.take(5) }
+    private val _recentIntentions = intentionRepository.getAllIntentions().map { it }
 
     private val _userPrefsFlow = combine(
         combine(

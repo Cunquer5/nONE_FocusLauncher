@@ -6,11 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,12 +19,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.model.AppModel
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism.glassBackground
+import com.example.nonelauncher.ui.theme.SquircleShapes
+import dev.chrisbanes.haze.HazeState
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -38,11 +39,11 @@ fun AppIcon(
     onAppClick: (AppModel) -> Unit,
     onUninstall: () -> Unit = {},
     onAppInfo: () -> Unit = {},
-    isUninstallable: Boolean = false
+    isUninstallable: Boolean = false,
+    hazeState: HazeState? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
     
-    // Logic for size based on columns
     val iconSize = when (gridColumns) {
         4 -> 56.dp
         5 -> 48.dp
@@ -57,7 +58,12 @@ fun AppIcon(
         else -> 8.dp
     }
 
-    val iconShape = RoundedCornerShape(22)
+    val iconShape = when (gridColumns) {
+        4 -> SquircleShapes.Icon56dp
+        5 -> SquircleShapes.Icon48dp
+        6 -> SquircleShapes.Icon40dp
+        else -> SquircleShapes.Icon56dp
+    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -72,7 +78,7 @@ fun AppIcon(
             .padding(4.dp)
     ) {
         Box {
-             DropdownMenu(
+            DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },
                 modifier = Modifier.background(Color.Black.copy(alpha = 0.7f))
@@ -90,7 +96,7 @@ fun AppIcon(
                         onClick = { 
                             showMenu = false
                             onUninstall() 
-                    }
+                        }
                     )
                 }
             }
@@ -108,14 +114,19 @@ fun AppIcon(
             modifier = Modifier
                 .size(iconSize)
                 .clip(iconShape)
-                .background(Color.Black.copy(alpha = 0.3f))
-                .graphicsLayer {
-                    shape = iconShape
-                    clip = true
-                    if (isGrayscale) {
-                        alpha = 0.5f
+                .then(
+                    if (hazeState != null) {
+                        Modifier.glassBackground(
+                            hazeState = hazeState,
+                            intensity = HazeGlassMorphism.BlurIntensity.SUBTLE,
+                            color = Color.Black.copy(alpha = 0.3f),
+                            cornerRadius = iconSize * 0.2237f,
+                            border = false
+                        )
+                    } else {
+                        Modifier.background(Color.Black.copy(alpha = 0.3f))
                     }
-                }
+                )
         ) {
             Image(
                 bitmap = app.icon,
@@ -123,6 +134,7 @@ fun AppIcon(
                 colorFilter = colorFilter,
                 modifier = Modifier
                     .fillMaxSize()
+                    .clip(iconShape)
                     .then(
                         if (isBlurred) Modifier.blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                         else Modifier
@@ -130,7 +142,7 @@ fun AppIcon(
             )
         }
         
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(5.dp))
         
         Text(
             text = app.label,
@@ -139,7 +151,7 @@ fun AppIcon(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
-            color = if (isGrayscale) Color.White.copy(alpha = 0.6f) else Color.White // Force white for Modern Dark theme
+            color = if (isGrayscale) Color.White.copy(alpha = 0.6f) else Color.White
         )
     }
 }

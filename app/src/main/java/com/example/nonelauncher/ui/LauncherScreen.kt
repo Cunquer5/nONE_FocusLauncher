@@ -3,6 +3,7 @@ package com.example.nonelauncher.ui
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
@@ -69,7 +70,7 @@ fun LauncherScreen(
     }
 
     if (!isDefaultLauncher) {
-        Surface(color = MaterialTheme.colorScheme.background) {
+        Surface(color = androidx.compose.ui.graphics.Color.Transparent) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
