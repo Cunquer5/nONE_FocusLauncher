@@ -9,6 +9,15 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.3.1",
+        versionCode = 5,
+        releaseDate = "2026-02-03",
+        features = listOf(
+            "fixed getting stuck at homescreen",
+            "fixed getting stuck at recent apps section"
+        )
+    ),
+    VersionInfo(
         versionName = "1.3.0",
         versionCode = 4,
         releaseDate = "2026-01-30",

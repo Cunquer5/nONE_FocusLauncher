@@ -166,10 +166,20 @@ fun DockItem(
             .clip(RoundedCornerShape(33.dp))
             .then(if (isActive) Modifier.background(Color.Black.copy(alpha = 0.55f)) else Modifier)
             .clickable(onClick = onClick)
-            .padding(horizontal = if (isActive && showLabel) 16.dp else 0.dp),
+            .then(
+                if (isActive && showLabel) 
+                    Modifier.widthIn(min = 48.dp) // Allow natural width when active
+                else 
+                    Modifier.width(48.dp) // Fixed width when inactive
+            )
+            .padding(horizontal = if (isActive && showLabel) 12.dp else 0.dp),
         contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.wrapContentWidth()
+        ) {
             Box(
                  modifier = Modifier.size(48.dp),
                  contentAlignment = Alignment.Center
@@ -188,18 +198,18 @@ fun DockItem(
             
             AnimatedVisibility(
                 visible = isActive && showLabel,
-                enter = expandHorizontally() + fadeIn(),
-                exit = shrinkHorizontally() + fadeOut()
+                enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
             ) {
-                Row {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = label,
-                        color = if (isActive) Color(0xFFFF4D00) else Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                }
+                Text(
+                    text = label,
+                    color = if (isActive) Color(0xFFFF4D00) else Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp)
+                )
             }
         }
     }

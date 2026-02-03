@@ -59,8 +59,17 @@ fun LauncherScreen(
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                isDefaultLauncher = isDefaultLauncher(context)
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    // Re-verify launcher status on every resume
+                    // This handles navigation from recents, settings, etc.
+                    isDefaultLauncher = isDefaultLauncher(context)
+                }
+                Lifecycle.Event.ON_START -> {
+                    // Additional check on start for cold launches
+                    isDefaultLauncher = isDefaultLauncher(context)
+                }
+                else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

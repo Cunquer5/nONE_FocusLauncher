@@ -44,25 +44,50 @@ fun AppIcon(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     
-    val iconSize = when (gridColumns) {
-        4 -> 56.dp
-        5 -> 48.dp
-        6 -> 40.dp
-        else -> 56.dp
+    // Pre-calculate sizes outside of composition to avoid recompositions
+    val iconSize = remember(gridColumns) {
+        when (gridColumns) {
+            4 -> 56.dp
+            5 -> 48.dp
+            6 -> 40.dp
+            else -> 56.dp
+        }
     }
     
-    val blurRadius = when (gridColumns) {
-        4 -> 8.dp
-        5 -> 6.dp
-        6 -> 4.dp
-        else -> 8.dp
+    val blurRadius = remember(gridColumns) {
+        when (gridColumns) {
+            4 -> 8.dp
+            5 -> 6.dp
+            6 -> 4.dp
+            else -> 8.dp
+        }
     }
 
-    val iconShape = when (gridColumns) {
-        4 -> SquircleShapes.Icon56dp
-        5 -> SquircleShapes.Icon48dp
-        6 -> SquircleShapes.Icon40dp
-        else -> SquircleShapes.Icon56dp
+    val iconShape = remember(gridColumns) {
+        when (gridColumns) {
+            4 -> SquircleShapes.Icon56dp
+            5 -> SquircleShapes.Icon48dp
+            6 -> SquircleShapes.Icon40dp
+            else -> SquircleShapes.Icon56dp
+        }
+    }
+    
+    // Pre-calculate color filter only when isGrayscale changes
+    val colorFilter = remember(isGrayscale) {
+        if (isGrayscale) {
+            ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+        } else {
+            null
+        }
+    }
+    
+    // Pre-calculate text properties
+    val (fontSize, lineHeight) = remember(gridColumns) {
+        if (gridColumns > 5) 10.sp to 12.sp else 12.sp to 14.sp
+    }
+    
+    val textColor = remember(isGrayscale) {
+        if (isGrayscale) Color.White.copy(alpha = 0.6f) else Color.White
     }
 
     Column(
@@ -101,32 +126,13 @@ fun AppIcon(
                 }
             }
         }
-        
-        val colorFilter = remember(isGrayscale) {
-            if (isGrayscale) {
-                ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
-            } else {
-                null
-            }
-        }
 
+        // Use static background when hazeState is not provided to reduce rendering cost
         Box(
             modifier = Modifier
                 .size(iconSize)
                 .clip(iconShape)
-                .then(
-                    if (hazeState != null) {
-                        Modifier.glassBackground(
-                            hazeState = hazeState,
-                            intensity = HazeGlassMorphism.BlurIntensity.SUBTLE,
-                            color = Color.Black.copy(alpha = 0.3f),
-                            cornerRadius = iconSize * 0.2237f,
-                            border = false
-                        )
-                    } else {
-                        Modifier.background(Color.Black.copy(alpha = 0.3f))
-                    }
-                )
+                .background(Color.Black.copy(alpha = 0.3f))
         ) {
             Image(
                 bitmap = app.icon,
@@ -146,12 +152,12 @@ fun AppIcon(
         
         Text(
             text = app.label,
-            fontSize = if (gridColumns > 5) 10.sp else 12.sp,
-            lineHeight = if (gridColumns > 5) 12.sp else 14.sp,
+            fontSize = fontSize,
+            lineHeight = lineHeight,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
-            color = if (isGrayscale) Color.White.copy(alpha = 0.6f) else Color.White
+            color = textColor
         )
     }
 }

@@ -60,11 +60,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        // Handle home button press and system gestures
+        setIntent(intent)
+        // Handle home button press and recent tasks navigation
         if (intent?.action == Intent.ACTION_MAIN && 
             intent.hasCategory(Intent.CATEGORY_HOME)) {
-            // Reset to home screen state
-            moveTaskToBack(false)
+            // Properly restore launcher state from recents
+            // Don't call moveTaskToBack - let the system handle it naturally
         }
     }
 
