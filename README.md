@@ -36,7 +36,13 @@
 
 ## Changelog
 
-### v1.3.0 - January 30, 2026
+### v1.3.2 - February 3, 2026
+
+#### Features
+- **Persistent Subtask State**: Subtask completion status now survives app restarts and closing.
+- **Reliable Task Tracking**: Individual subtasks maintain their checked/unchecked state consistently.
+
+### v1.3.1 - January 30, 2026
 
 #### Features
 - **Dual-Section Swipeable App Drawer**: Separated app grid and widgets into two distinct swipeable pages for a cleaner interface.

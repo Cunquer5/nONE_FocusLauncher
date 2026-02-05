@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.nonelauncher.data.local.AppDatabase
 import com.example.nonelauncher.data.local.entity.Intention
 import com.example.nonelauncher.data.model.AppModel
+import com.example.nonelauncher.data.model.OneThingTask
+import com.example.nonelauncher.data.model.SubTask
 import com.example.nonelauncher.data.repository.AppRepository
 import com.example.nonelauncher.data.repository.IntentionRepository
 import com.example.nonelauncher.data.repository.UserPreferencesRepository
@@ -56,12 +58,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     val uiState: StateFlow<HomeUiState> = combine(
-        _installedApps,
-        _userPrefsFlow,
-        _recentIntentions,
-        _searchQuery,
-        prefsRepository.oneThingTask
-    ) { apps, prefs, intentions, query, oneThing ->
+        listOf(_installedApps, _userPrefsFlow, _recentIntentions, _searchQuery, prefsRepository.oneThingTask, prefsRepository.oneThingTaskWithState)
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        val apps = values[0] as List<AppModel>
+        @Suppress("UNCHECKED_CAST")
+        val prefs = values[1] as Prefs
+        @Suppress("UNCHECKED_CAST")
+        val intentions = values[2] as List<Intention>
+        @Suppress("UNCHECKED_CAST")
+        val query = values[3] as String
+        @Suppress("UNCHECKED_CAST")
+        val oneThing = values[4] as String?
+        @Suppress("UNCHECKED_CAST")
+        val oneThingWithState = values[5] as OneThingTask?
         
         val filteredApps = apps.map { app ->
             app.copy(isFocusMode = prefs.isFocusMode, isFocusApp = prefs.focusPackages.contains(app.packageName))
@@ -98,6 +108,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             searchQuery = query,
             gridColumns = prefs.columns,
             oneThingTask = oneThing,
+            oneThingTaskWithState = oneThingWithState,
             widgetIds = prefs.widgetIds
         )
     }
@@ -156,6 +167,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         prefsRepository.setFocusApps(newPackages)
     }
 
+    fun setOneThingTaskWithState(task: OneThingTask?) {
+        prefsRepository.setOneThingTaskWithState(task)
+    }
+    
+    fun updateSubtaskState(subtaskId: String, isCompleted: Boolean) {
+        val currentTask = prefsRepository.oneThingTaskWithState.value
+        if (currentTask != null) {
+            val updatedSubTasks = currentTask.subTasks.map { subTask ->
+                if (subTask.id == subtaskId) subTask.copy(isCompleted = isCompleted) else subTask
+            }
+            val updatedTask = currentTask.copy(subTasks = updatedSubTasks)
+            prefsRepository.setOneThingTaskWithState(updatedTask)
+        }
+    }
+    
+    fun resetOneThingTask() {
+        prefsRepository.setOneThingTaskWithState(null)
+    }
+    
     fun setOneThingTask(task: String?) {
         prefsRepository.setOneThingTask(task)
     }
@@ -190,5 +220,6 @@ data class HomeUiState(
     val searchQuery: String = "",
     val gridColumns: Int = 4,
     val oneThingTask: String? = null,
+    val oneThingTaskWithState: OneThingTask? = null,
     val widgetIds: List<Int> = emptyList()
 )

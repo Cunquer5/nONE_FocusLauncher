@@ -20,21 +20,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nonelauncher.data.model.OneThingTask
+import com.example.nonelauncher.data.model.SubTask
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import kotlinx.coroutines.delay
 
 @Composable
 fun OneThingTaskDisplay(
-    task: String,
+    task: OneThingTask,
     onMainTaskCompleted: () -> Unit,
+    onUpdateSubtask: (String, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    val tasks = task.split("\n").filter { it.isNotBlank() }
-    val mainTask = tasks.firstOrNull() ?: ""
-    val subTasks = tasks.drop(1)
+    val mainTask = task.mainTask
+    val subTasks = task.subTasks
     
-    var isMainTaskCompleted by remember { mutableStateOf(false) }
-    var completedSubtasks by remember { mutableStateOf(setOf<Int>()) }
+    // Use external state instead of local state
+    // Calculate if all subtasks are completed
+    val allSubtasksCompleted by remember(subTasks) {
+        derivedStateOf {
+            subTasks.isNotEmpty() && subTasks.all { it.isCompleted }
+        }
+    }
+    
+    // Calculate if main task should be considered completed
+    val isMainTaskCompleted by remember(subTasks, allSubtasksCompleted) {
+        derivedStateOf {
+            allSubtasksCompleted || (subTasks.isEmpty() && false) // Main task completed if all subtasks done
+        }
+    }
     
     LaunchedEffect(isMainTaskCompleted) {
         if (isMainTaskCompleted) {
@@ -42,7 +56,7 @@ fun OneThingTaskDisplay(
             onMainTaskCompleted()
         }
     }
-
+    
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -62,7 +76,17 @@ fun OneThingTaskDisplay(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(20.dp)
-                        .clickable { isMainTaskCompleted = !isMainTaskCompleted }
+                        .clickable { 
+                            // For main task, complete all subtasks
+                            if (!allSubtasksCompleted && subTasks.isNotEmpty()) {
+                                // Complete all subtasks
+                                subTasks.forEach { subTask ->
+                                    if (!subTask.isCompleted) {
+                                        onUpdateSubtask(subTask.id, true)
+                                    }
+                                }
+                            }
+                        }
                 ) {
                     Box(
                         modifier = Modifier
@@ -83,7 +107,7 @@ fun OneThingTaskDisplay(
                             )
                         }
                     }
-
+                    
                     Spacer(modifier = Modifier.width(16.dp))
 
                     Text(
@@ -114,10 +138,9 @@ fun OneThingTaskDisplay(
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
             }
-
+            
             itemsIndexed(subTasks) { index, subTask ->
-                val isSubtaskCompleted = completedSubtasks.contains(index)
-                
+                val isSubtaskCompleted = subTask.isCompleted
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -130,23 +153,24 @@ fun OneThingTaskDisplay(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
-                            .clickable {
-                                completedSubtasks = if (isSubtaskCompleted) {
-                                    completedSubtasks - index
-                                } else {
-                                    completedSubtasks + index
-                                }
+                            .clickable { 
+                                onUpdateSubtask(subTask.id, !isSubtaskCompleted)
                             }
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(24.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (isSubtaskCompleted)
+                                .border(
+                                    width = 2.dp,
+                                    color = if (isSubtaskCompleted)
                                         OrangePrimary
                                     else
-                                        Color.White.copy(alpha = 0.3f)
+                                        Color.White.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .background(
+                                    if (isSubtaskCompleted) OrangePrimary else Color.Transparent,
+                                    RoundedCornerShape(4.dp)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
@@ -163,7 +187,7 @@ fun OneThingTaskDisplay(
                         Spacer(modifier = Modifier.width(16.dp))
 
                         Text(
-                            text = subTask,
+                            text = subTask.text,
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = FontWeight.Medium,
                                 textDecoration = if (isSubtaskCompleted)

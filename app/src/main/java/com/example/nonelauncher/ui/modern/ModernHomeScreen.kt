@@ -21,6 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nonelauncher.data.model.AppModel
+import com.example.nonelauncher.data.model.OneThingTask
+import com.example.nonelauncher.data.model.SubTask
+import com.example.nonelauncher.data.model.parseOneThingTaskWithState
+import com.example.nonelauncher.data.model.serializeOneThingTask
 import com.example.nonelauncher.ui.MainViewModel
 import com.example.nonelauncher.ui.components.IntentionDialog
 import com.example.nonelauncher.ui.home.HomeViewModel
@@ -68,21 +72,39 @@ fun ModernHomeScreen(
     }
 
     // Task completion handlers
-    val onTaskSet: (String) -> Unit = { task ->
-        homeViewModel.setOneThingTask(task)
+    val onTaskSet: (String) -> Unit = { taskStr ->
+        // Parse the serialized task string back to OneThingTask object
+        val parsedTask = parseOneThingTaskWithState(taskStr)
+        if (parsedTask != null) {
+            homeViewModel.setOneThingTaskWithState(parsedTask)
+        }
         showInputCard = false
         showTaskDisplay = true
     }
     
     val onMainTaskCompleted: () -> Unit = {
-        homeViewModel.setOneThingTask(null)
-        showTaskDisplay = false
-        showInputCard = true
+        // Mark all subtasks as completed when main task is done
+        uiState.oneThingTaskWithState?.subTasks?.forEach { subTask ->
+            if (!subTask.isCompleted) {
+                homeViewModel.updateSubtaskState(subTask.id, true)
+            }
+        }
+        
+        // Schedule cleanup after delay
+        scope.launch {
+            kotlinx.coroutines.delay(5000L)
+            homeViewModel.resetOneThingTask()
+        }
     }
 
-    val oneThingTask = uiState.oneThingTask
-    var checkedSubtasks by remember(oneThingTask) { mutableStateOf(setOf<Int>()) }
-    var isMainTaskChecked by remember(oneThingTask) { mutableStateOf(false) }
+    val oneThingTask = uiState.oneThingTaskWithState
+    val checkedSubtaskIds = remember(oneThingTask) {
+        oneThingTask?.subTasks?.filter { it.isCompleted }?.map { it.id }?.toSet() ?: emptySet()
+    }
+    
+    // Old local state that we're replacing:
+    // var checkedSubtasks by remember(oneThingTask) { mutableStateOf(setOf<Int>()) }
+    // var isMainTaskChecked by remember(oneThingTask) { mutableStateOf(false) }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -90,10 +112,13 @@ fun ModernHomeScreen(
 
 
         // Main Content: 1 Thing Display (Only visible when task exists and showTaskDisplay is true)
-        if (showOneThing && showTaskDisplay && !oneThingTask.isNullOrEmpty()) {
+        if (showOneThing && showTaskDisplay && uiState.oneThingTaskWithState != null) {
             OneThingTaskDisplay(
-                task = oneThingTask,
+                task = uiState.oneThingTaskWithState!!,
                 onMainTaskCompleted = onMainTaskCompleted,
+                onUpdateSubtask = { subtaskId, isCompleted ->
+                    homeViewModel.updateSubtaskState(subtaskId, isCompleted)
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = 40.dp, bottom = 120.dp)
@@ -173,7 +198,7 @@ fun ModernHomeScreen(
                     showOneThing = true
                     showSettings = false
                     showAppDrawer = false
-                    if (!oneThingTask.isNullOrEmpty()) {
+                    if (oneThingTask != null) {
                         showTaskDisplay = true
                         showInputCard = false
                     } else {

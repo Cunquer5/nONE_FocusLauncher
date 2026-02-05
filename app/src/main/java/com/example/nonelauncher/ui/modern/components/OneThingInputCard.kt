@@ -12,6 +12,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.nonelauncher.data.model.OneThingTask
+import com.example.nonelauncher.data.model.SubTask
+import com.example.nonelauncher.data.model.serializeOneThingTask
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.apiAwareBlur
 
@@ -103,7 +106,11 @@ fun OneThingInputCard(
             Button(
                 onClick = {
                     if (mainTask.isNotBlank()) {
-                        onTaskSet(if (actionStep.isNotBlank()) "$mainTask\n$actionStep" else mainTask)
+                        // Create OneThingTask with main task and subtasks
+                        val subTasks = actionStep.split("\n").filter { it.isNotBlank() }
+                            .map { SubTask(text = it, isCompleted = false) }
+                        val oneThingTask = OneThingTask(mainTask, subTasks)
+                        onTaskSet(serializeOneThingTask(oneThingTask))
                         mainTask = ""
                         actionStep = ""
                     }

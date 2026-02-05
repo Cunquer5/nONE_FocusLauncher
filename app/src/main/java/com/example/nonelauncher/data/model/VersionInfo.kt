@@ -7,7 +7,52 @@ data class VersionInfo(
     val features: List<String>
 )
 
+data class SubTask(
+    val id: String = java.util.UUID.randomUUID().toString(), // Unique identifier
+    val text: String,
+    val isCompleted: Boolean = false
+)
+
+data class OneThingTask(
+    val mainTask: String,
+    val subTasks: List<SubTask>
+)
+
+fun serializeOneThingTask(task: OneThingTask): String {
+    return "${task.mainTask}|${task.subTasks.joinToString(";") { "${it.id},${it.text.replace("|", "\\|").replace(";", "\\;").replace(",", "\\,")},${it.isCompleted}" }}"
+}
+
+fun parseOneThingTaskWithState(serialized: String?): OneThingTask? {
+    if (serialized.isNullOrEmpty()) return null
+    val parts = serialized.split("|")
+    if (parts.size < 2) return null
+    
+    val mainTask = parts[0]
+    val subTasks = parts[1].split(";").filter { it.isNotEmpty() }.mapNotNull { subStr ->
+        val subParts = subStr.split(",")
+        if (subParts.size >= 3) {
+            SubTask(
+                id = subParts[0],
+                text = subParts[1].replace("\\|", "|").replace("\\;", ";").replace("\\,", ","),
+                isCompleted = subParts[2].toBoolean()
+            )
+        } else null
+    }
+    
+    return OneThingTask(mainTask, subTasks)
+}
+
 val Changelog = listOf(
+    VersionInfo(
+        versionName = "1.3.2",
+        versionCode = 6,
+        releaseDate = "2026-02-03",
+        features = listOf(
+            "persistent subtask state for 1 Thing todo list",
+            "subtask completion status now survives app restarts",
+            "proper serialization and deserialization of subtask states"
+        )
+    ),
     VersionInfo(
         versionName = "1.3.1",
         versionCode = 5,
