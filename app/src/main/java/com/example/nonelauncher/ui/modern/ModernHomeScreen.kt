@@ -152,8 +152,10 @@ fun ModernHomeScreen(
                 },
                 onWallpaperClick = { showWallpaperDialog = true },
                 onHistoryClick = { 
-                    showSettings = false
-                    showHistory = true 
+                    showHistory = true
+                    showSettings = false  // Close settings when opening history
+                    showAppDrawer = false
+                    showOneThing = false  // Close dock items when opening history
                 },
                 onToggleFocusApp = { homeViewModel.toggleAppFocusStatus(it.packageName) },
                 onToggleFocusMode = { homeViewModel.toggleFocusMode() },
@@ -168,7 +170,7 @@ fun ModernHomeScreen(
                 intentions = allIntentions,
                 onDismiss = { 
                     showHistory = false
-                    showSettings = true
+                    showSettings = true  // Automatically open settings when closing history
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -180,6 +182,7 @@ fun ModernHomeScreen(
 
         // Dock
         GlassDock(
+            hazeState = hazeState,
             activeItem = activeTab,
             modifier = Modifier.align(Alignment.BottomCenter),
             onPhoneClick = {
@@ -198,6 +201,7 @@ fun ModernHomeScreen(
                     showOneThing = true
                     showSettings = false
                     showAppDrawer = false
+                    showHistory = false  // Close history when opening 1 Thing
                     if (oneThingTask != null) {
                         showTaskDisplay = true
                         showInputCard = false
@@ -212,11 +216,13 @@ fun ModernHomeScreen(
                     showAppDrawer = true
                     showSettings = false
                     showOneThing = false
+                    showHistory = false  // Close history when opening app drawer
                 }
             },
             onSettingsClick = {
                 if (showSettings) showSettings = false else {
                     showSettings = true
+                    showHistory = false  // Close history when opening settings
                     showAppDrawer = false
                     showOneThing = false
                 }

@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.model.OneThingTask
 import com.example.nonelauncher.data.model.SubTask
 import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
 
 @Composable
@@ -32,8 +35,12 @@ fun OneThingTaskDisplay(
     onUpdateSubtask: (String, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
+    val hazeState = HazeGlassMorphism.rememberHazeState()
     val mainTask = task.mainTask
     val subTasks = task.subTasks
+    
+    // Local state to track direct main task completion (when no subtasks)
+    var isMainTaskDirectlyCompleted by remember { mutableStateOf(false) }
     
     // Use external state instead of local state
     // Calculate if all subtasks are completed
@@ -44,15 +51,15 @@ fun OneThingTaskDisplay(
     }
     
     // Calculate if main task should be considered completed
-    val isMainTaskCompleted by remember(subTasks, allSubtasksCompleted) {
+    val isMainTaskCompleted by remember(subTasks, allSubtasksCompleted, isMainTaskDirectlyCompleted) {
         derivedStateOf {
-            allSubtasksCompleted || (subTasks.isEmpty() && false) // Main task completed if all subtasks done
+            allSubtasksCompleted || (subTasks.isEmpty() && isMainTaskDirectlyCompleted)
         }
     }
     
     LaunchedEffect(isMainTaskCompleted) {
         if (isMainTaskCompleted) {
-            delay(300)
+            delay(150)
             onMainTaskCompleted()
         }
     }
@@ -64,12 +71,17 @@ fun OneThingTaskDisplay(
     ) {
         // Main task
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Black.copy(alpha = 0.3f)
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .hazeChild(state = hazeState, blurRadius = 12.dp)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(16.dp)
+                    )
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -77,13 +89,20 @@ fun OneThingTaskDisplay(
                         .fillMaxWidth()
                         .padding(20.dp)
                         .clickable { 
-                            // For main task, complete all subtasks
-                            if (!allSubtasksCompleted && subTasks.isNotEmpty()) {
-                                // Complete all subtasks
-                                subTasks.forEach { subTask ->
-                                    if (!subTask.isCompleted) {
-                                        onUpdateSubtask(subTask.id, true)
+                            // Allow main task to be checked even without subtasks
+                            // For main task, complete all subtasks OR mark as completed directly if no subtasks
+                            if (!isMainTaskCompleted) {
+                                if (subTasks.isNotEmpty()) {
+                                    // Complete all subtasks
+                                    subTasks.forEach { subTask ->
+                                        if (!subTask.isCompleted) {
+                                            onUpdateSubtask(subTask.id, true)
+                                        }
                                     }
+                                } else {
+                                    // No subtasks - mark as directly completed and trigger completion
+                                    isMainTaskDirectlyCompleted = true
+                                    onMainTaskCompleted()
                                 }
                             }
                         }
@@ -141,12 +160,17 @@ fun OneThingTaskDisplay(
             
             itemsIndexed(subTasks) { index, subTask ->
                 val isSubtaskCompleted = subTask.isCompleted
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.Black.copy(alpha = 0.2f)
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .hazeChild(state = hazeState, blurRadius = 12.dp)
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -154,7 +178,8 @@ fun OneThingTaskDisplay(
                             .fillMaxWidth()
                             .padding(16.dp)
                             .clickable { 
-                                onUpdateSubtask(subTask.id, !isSubtaskCompleted)
+                                val newState = !isSubtaskCompleted
+                                onUpdateSubtask(subTask.id, newState)
                             }
                     ) {
                         Box(

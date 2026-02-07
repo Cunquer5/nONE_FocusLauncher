@@ -36,6 +36,16 @@
 
 ## Changelog
 
+### v1.3.3 - February 7, 2026
+
+#### Features
+- **Enhanced Visual Design**: Added white borders to app drawer and launcher settings cards for better visual definition
+- **Improved UI Navigation**: Implemented mutual exclusivity between intention history and launcher settings
+- **Better User Flow**: Closing intention history now automatically opens launcher settings
+- **Visual Refinements**: Increased border opacity from 0.1f to 0.25f for better visibility
+- **Transparency Adjustments**: Reduced settings card background opacity from 0.6f to 0.46f for improved transparency
+- **Button Enhancement**: Set focus task button now has 100% transparency with saturated orange color
+
 ### v1.3.2 - February 3, 2026
 
 #### Features

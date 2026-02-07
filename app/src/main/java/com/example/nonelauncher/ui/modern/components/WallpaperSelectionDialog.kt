@@ -22,6 +22,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import com.example.nonelauncher.ui.components.GlassMorphismButton
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import androidx.compose.foundation.border
 
 /**
  * Wallpaper Selection Dialog for Modern UI
@@ -37,6 +43,7 @@ fun WallpaperSelectionDialog(
 ) {
     val context = LocalContext.current
     val wallpaperManager = WallpaperManager.getInstance(context)
+    val hazeState = HazeGlassMorphism.rememberHazeState()
     
     // Get current wallpaper drawable
     val currentWallpaper = try {
@@ -60,7 +67,14 @@ fun WallpaperSelectionDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .background(Color(0xFF1E1E1E), RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(24.dp))
+                .hazeChild(state = hazeState, blurRadius = 16.dp)
+                .background(Color.Black.copy(alpha = 0.6f))
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(24.dp)
+                )
                 .padding(24.dp)
         ) {
             Column(
@@ -83,7 +97,8 @@ fun WallpaperSelectionDialog(
                     onClick = {
                         onOrangeColorSelected()
                         onDismiss()
-                    }
+                    },
+                    hazeState = hazeState
                 )
 
                 // Divider
@@ -102,22 +117,19 @@ fun WallpaperSelectionDialog(
                     onClick = {
                         onCustomWallpaperClick()
                         onDismiss()
-                    }
+                    },
+                    hazeState = hazeState
                 )
 
                 // Close Button
-                Button(
+                GlassMorphismButton(
                     onClick = onDismiss,
+                    text = "Cancel",
+                    hazeState = hazeState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.1f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Cancel", color = Color.White)
-                }
+                        .height(48.dp)
+                )
             }
         }
     }
@@ -133,14 +145,21 @@ private fun WallpaperOption(
     backgroundColor: Color,
     isSelected: Boolean = false,
     preview: android.graphics.drawable.Drawable? = null,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    hazeState: HazeState
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(120.dp)
             .clip(RoundedCornerShape(16.dp))
+            .hazeChild(state = hazeState, blurRadius = 12.dp)
             .background(backgroundColor.copy(alpha = 0.3f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(16.dp)
+            )
             .clickable(onClick = onClick)
             .padding(16.dp),
         contentAlignment = Alignment.CenterStart

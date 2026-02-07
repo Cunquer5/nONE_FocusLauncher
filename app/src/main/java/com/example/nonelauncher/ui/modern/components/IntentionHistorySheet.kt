@@ -1,6 +1,7 @@
 package com.example.nonelauncher.ui.modern.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,10 @@ import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.local.entity.Intention
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.components.GlassContainer
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -32,6 +37,7 @@ fun IntentionHistorySheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hazeState = HazeGlassMorphism.rememberHazeState()
     val groupedIntentions = remember(intentions) {
         intentions.groupBy { intention ->
             getRelativeDate(Date(intention.timestamp))
@@ -78,7 +84,14 @@ fun IntentionHistorySheet(
                     onClick = onDismiss,
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        .clip(CircleShape)
+                        .hazeChild(state = hazeState, blurRadius = 8.dp)
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.335f),
+                            shape = CircleShape
+                        )
                 ) {
                     Icon(
                         Icons.Default.Close,
@@ -108,7 +121,7 @@ fun IntentionHistorySheet(
                     }
                     
                     items(intentionsForDate) { intention ->
-                        HistoryItem(intention)
+                        HistoryItem(intention, hazeState)
                     }
                     
                     item {
@@ -121,41 +134,51 @@ fun IntentionHistorySheet(
 }
 
 @Composable
-fun HistoryItem(intention: Intention) {
-    Row(
+fun HistoryItem(intention: Intention, hazeState: HazeState) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
+            .hazeChild(state = hazeState, blurRadius = 12.dp)
             .background(Color.Black.copy(alpha = 0.6f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(24.dp)
+            )
             .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(Color.White.copy(0.1f), RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            //Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null, tint = Color.White.copy(0.7f))
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "${intention.appLabel}: ${intention.intentionText}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(0.9f)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            val dateTime = remember(intention.timestamp) {
-                getFormattedDateTime(Date(intention.timestamp))
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color.White.copy(0.1f), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                //Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null, tint = Color.White.copy(0.7f))
             }
-            Text(
-                text = dateTime,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(0.4f)
-            )
+    
+            Spacer(modifier = Modifier.width(16.dp))
+    
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${intention.appLabel}: ${intention.intentionText}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(0.9f)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                val dateTime = remember(intention.timestamp) {
+                    getFormattedDateTime(Date(intention.timestamp))
+                }
+                Text(
+                    text = dateTime,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(0.4f)
+                )
+            }
         }
     }
 }

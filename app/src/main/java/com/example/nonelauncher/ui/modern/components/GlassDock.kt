@@ -14,21 +14,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism
 import com.example.nonelauncher.ui.theme.apiAwareBlur
-
-enum class DockItemType {
-    PHONE, ONE_THING, APPS, SETTINGS, NONE
-}
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
 
 @Composable
 fun GlassDock(
+    hazeState: HazeState,
     activeItem: DockItemType = DockItemType.NONE,
     onPhoneClick: () -> Unit,
     onOneThingClick: () -> Unit,
@@ -42,92 +43,107 @@ fun GlassDock(
             .padding(horizontal = 24.dp, vertical = 32.dp)
             .height(80.dp)
     ) {
-        // Background with blur effect
+        // LAYER 1: Background with Haze blur (BEHIND content)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .haze(
+                    state = hazeState,
+                    style = HazeStyle(
+                        tint = Color.Transparent
+                    )
+                )
+        )
+        
+        // LAYER 2: Glass surface + Content (NO BLUR ON CONTENT)
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .clip(RoundedCornerShape(40.dp))
+                .hazeChild(
+                    state = hazeState,
+                    style = HazeStyle(blurRadius = 20.dp)
+                )
                 .background(Color(0xFF0F0F0F).copy(alpha = 0.55f))
-                .apiAwareBlur(20.dp, fallbackAlpha = 0.8f)
                 .border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.1f),
+                    color = Color.White.copy(alpha = 0.25f),
                     shape = RoundedCornerShape(40.dp)
                 )
-        )
-        
-        // Content layer (stays sharp)
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            DockItem(
-                icon = Icons.Default.Call,
-                label = "Phone",
-                isActive = activeItem == DockItemType.PHONE,
-                onClick = onPhoneClick,
-                showLabel = false
-            )
-
-            Box(
+            // Content layer (stays sharp)
+            Row(
                 modifier = Modifier
-                    .height(63.dp)
-                    .clip(RoundedCornerShape(33.dp))
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable(onClick = onOneThingClick)
-                    .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 16.dp else 0.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(64.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "1",
-                            color = Color(0xFFFF4D00),
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                DockItem(
+                    icon = Icons.Default.Call,
+                    label = "Phone",
+                    isActive = activeItem == DockItemType.PHONE,
+                    onClick = onPhoneClick,
+                    showLabel = false
+                )
 
-                    AnimatedVisibility(
-                        visible = activeItem == DockItemType.ONE_THING,
-                        enter = expandHorizontally() + fadeIn(),
-                        exit = shrinkHorizontally() + fadeOut()
-                    ) {
-                        Row {
+                Box(
+                    modifier = Modifier
+                        .height(63.dp)
+                        .clip(RoundedCornerShape(33.dp))
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .clickable(onClick = onOneThingClick)
+                        .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 16.dp else 0.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(64.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                text = "Thing",
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 17.sp,
-                                modifier = Modifier.padding(start = 1.dp)
+                                text = "1",
+                                color = Color(0xFFFF4D00),
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold
                             )
+                        }
+
+                        AnimatedVisibility(
+                            visible = activeItem == DockItemType.ONE_THING,
+                            enter = expandHorizontally() + fadeIn(),
+                            exit = shrinkHorizontally() + fadeOut()
+                        ) {
+                            Row {
+                                Text(
+                                    text = "Thing",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 17.sp,
+                                    modifier = Modifier.padding(start = 1.dp)
+                                )
+                            }
                         }
                     }
                 }
+
+                DockItem(
+                    icon = null,
+                    label = "App Grid",
+                    isActive = activeItem == DockItemType.APPS,
+                    onClick = onAppsClick,
+                    showLabel = true,
+                    customIcon = { isActive -> RoundedGridIcon(isActive) }
+                )
+
+                DockItem(
+                    icon = Icons.Default.Settings,
+                    label = "Settings",
+                    isActive = activeItem == DockItemType.SETTINGS,
+                    onClick = onSettingsClick,
+                    showLabel = true
+                )
             }
-
-            DockItem(
-                icon = null,
-                label = "App Grid",
-                isActive = activeItem == DockItemType.APPS,
-                onClick = onAppsClick,
-                showLabel = true,
-                customIcon = { isActive -> RoundedGridIcon(isActive) }
-            )
-
-            DockItem(
-                icon = Icons.Default.Settings,
-                label = "Settings",
-                isActive = activeItem == DockItemType.SETTINGS,
-                onClick = onSettingsClick,
-                showLabel = true
-            )
         }
     }
 }
@@ -203,7 +219,7 @@ fun DockItem(
             ) {
                 Text(
                     text = label,
-                    color = if (isActive) Color(0xFFFF4D00) else Color.White,
+                    color = /*if (isActive) Color(0xFFFF4D00) else */Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     maxLines = 1,

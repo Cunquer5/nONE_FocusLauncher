@@ -44,11 +44,24 @@ fun parseOneThingTaskWithState(serialized: String?): OneThingTask? {
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.3.3",
+        versionCode = 7,
+        releaseDate = "2026-02-07",
+        features = listOf(
+            "added white borders to app drawer and launcher settings cards for better visual definition",
+            "implemented mutual exclusivity between intention history and launcher settings",
+            "improved UI navigation flow: closing history automatically opens settings",
+            "increased border opacity from 0.1f to 0.25f for better visibility",
+            "reduced settings card background opacity from 0.6f to 0.46f for improved transparency",
+            "set focus task button now has 100% transparency with saturated orange color"
+        )
+    ),
+    VersionInfo(
         versionName = "1.3.2",
         versionCode = 6,
         releaseDate = "2026-02-03",
         features = listOf(
-            "persistent subtask state for 1 Thing todo list",
+            "persistent subtask state for 1 thing todo list",
             "subtask completion status now survives app restarts",
             "proper serialization and deserialization of subtask states"
         )

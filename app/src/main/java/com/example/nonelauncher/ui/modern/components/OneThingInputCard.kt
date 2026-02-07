@@ -17,6 +17,9 @@ import com.example.nonelauncher.data.model.SubTask
 import com.example.nonelauncher.data.model.serializeOneThingTask
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.apiAwareBlur
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import com.example.nonelauncher.ui.components.GlassMorphismButton
+import com.example.nonelauncher.ui.components.GradientGlassMorphismButton
 
 @Composable
 fun OneThingInputCard(
@@ -25,6 +28,7 @@ fun OneThingInputCard(
 ) {
     var mainTask by remember { mutableStateOf("") }
     var actionStep by remember { mutableStateOf("") }
+    val hazeState = HazeGlassMorphism.rememberHazeState()
 
     Box(
         modifier = modifier
@@ -36,10 +40,10 @@ fun OneThingInputCard(
                 .matchParentSize()
                 .clip(RoundedCornerShape(24.dp))
                 .background(Color.Black.copy(alpha = 0.4f))
-                .apiAwareBlur(15.dp, fallbackAlpha = 0.7f)
+                //.apiAwareBlur(15.dp, fallbackAlpha = 0.3f)
                 .border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.1f),
+                    color = Color.White.copy(alpha = 0.25f),
                     shape = RoundedCornerShape(24.dp)
                 )
         )
@@ -102,8 +106,8 @@ fun OneThingInputCard(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Simplified button
-            Button(
+            // Simplified button with saturated orange color and 100% transparency
+            GradientGlassMorphismButton(
                 onClick = {
                     if (mainTask.isNotBlank()) {
                         // Create OneThingTask with main task and subtasks
@@ -115,21 +119,14 @@ fun OneThingInputCard(
                         actionStep = ""
                     }
                 },
+                text = "Set Focus Task",
+                hazeState = hazeState,
+                glassAlpha = 1.0f,  // 100% transparency
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = OrangePrimary
-                ),
-                shape = RoundedCornerShape(12.dp),
-                elevation = ButtonDefaults.buttonElevation(0.dp)
-            ) {
-                Text(
-                    "Set Focus Task", 
-                    color = Color.White, 
-                    fontWeight = FontWeight.Medium
-                )
-            }
+                    .height(48.dp)
+
+            )
         }
     }
 }

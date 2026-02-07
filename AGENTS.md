@@ -157,7 +157,7 @@ Required permissions in AndroidManifest.xml:
 - `REQUEST_DELETE_PACKAGES`: App uninstall support
 
 ### Version Info
-- **Current Version**: 1.3.2 (versionCode 6)
+- **Current Version**: 1.3.3 (versionCode 7)
 - **Target SDK**: 34 (Android 14)
 - **Min SDK**: 28 (Android 9)
 - **Java Version**: 17

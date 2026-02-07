@@ -22,6 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.nonelauncher.data.model.AppModel
+import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.components.GlassMorphismButton
 
 @Composable
 fun IntentionDialog(
@@ -31,6 +34,7 @@ fun IntentionDialog(
 ) {
     var intentionText by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+    val hazeState = HazeGlassMorphism.rememberHazeState()
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -78,22 +82,28 @@ fun IntentionDialog(
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.SpaceBetween // Changed to SpaceBetween for better layout
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    Button(
+                    GlassMorphismButton(
+                        onClick = onDismiss,
+                        text = "Cancel",
+                        hazeState = hazeState,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                        modifier = Modifier.height(48.dp)
+                    )
+                    
+                    GlassMorphismButton(
                         onClick = {
                             if (intentionText.trim().length >= 5) {
                                 onConfirm(intentionText.trim())
                             } else {
                                 isError = true
                             }
-                        }
-                    ) {
-                        Text("Open App")
-                    }
+                        },
+                        text = "Open App",
+                        hazeState = hazeState,
+                        modifier = Modifier.height(48.dp)
+                    )
                 }
             }
         }

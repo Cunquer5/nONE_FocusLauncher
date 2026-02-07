@@ -1,6 +1,7 @@
 package com.example.nonelauncher.ui.modern.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -37,6 +38,9 @@ import com.example.nonelauncher.ui.theme.HazeGlassMorphism
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
 import com.example.nonelauncher.ui.theme.AppGridSpacing
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import kotlin.math.min
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -123,6 +127,11 @@ fun AppDrawer(
                     .clip(RoundedCornerShape(32.dp))
                     .hazeChild(state = hazeState, blurRadius = 24.dp)
                     .background(Color.Black.copy(alpha = 0.5f))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.25f),
+                        shape = RoundedCornerShape(32.dp)
+                    )
             ) {
                 // Content goes here - stays sharp
                 Column(
@@ -185,6 +194,7 @@ fun AppDrawer(
                                 }
                             },
                             onDismiss = { showWidgetPicker = false },
+                            hazeState = hazeState,
                             modifier = Modifier.fillMaxWidth()
                         )
                     } else {
@@ -255,12 +265,19 @@ fun AppDrawer(
                                                     }
 
                                                     Box {
+                                                        // Glass morphism box for widget card
                                                         Box(
                                                             modifier = Modifier
                                                                 .fillMaxWidth()
                                                                 .height(widgetHeight)
                                                                 .clip(RoundedCornerShape(24.dp))
-                                                                .background(Color.White.copy(alpha = 0.05f))
+                                                                .hazeChild(state = hazeState, blurRadius = 16.dp)
+                                                                .background(Color.Black.copy(alpha = 0.6f))
+                                                                .border(
+                                                                    width = 1.dp,
+                                                                    color = Color.White.copy(alpha = 0.1f),
+                                                                    shape = RoundedCornerShape(24.dp)
+                                                                )
                                                                 .pointerInput(Unit) {
                                                                     detectTapGestures(onLongPress = { showMenu = true })
                                                                 }
@@ -278,7 +295,14 @@ fun AppDrawer(
                                                         DropdownMenu(
                                                             expanded = showMenu,
                                                             onDismissRequest = { showMenu = false },
-                                                            modifier = Modifier.background(Color.Black.copy(alpha = 0.7f))
+                                                            modifier = Modifier
+                                                                .hazeChild(state = hazeState, blurRadius = 16.dp)
+                                                                .background(Color.Black.copy(alpha = 0.7f))
+                                                                .border(
+                                                                    width = 1.dp,
+                                                                    color = Color.White.copy(alpha = 0.1f),
+                                                                    shape = RoundedCornerShape(12.dp)
+                                                                )
                                                         ) {
                                                             DropdownMenuItem(
                                                                 text = { Text("Remove Widget", color = Color.White) },
@@ -299,7 +323,13 @@ fun AppDrawer(
                                                 modifier = Modifier
                                                     .size(widgetCardWidth)
                                                     .clip(RoundedCornerShape(24.dp))
+                                                    .hazeChild(state = hazeState, blurRadius = 16.dp)
                                                     .background(Color.Black.copy(alpha = 0.7f))
+                                                    .border(
+                                                        width = 1.dp,
+                                                        color = Color.White.copy(alpha = 0.1f),
+                                                        shape = RoundedCornerShape(24.dp)
+                                                    )
                                                     .clickable { showWidgetPicker = true },
                                                 contentAlignment = Alignment.Center
                                             ) {
@@ -347,6 +377,7 @@ fun WidgetPickerCarousel(
     appWidgetManager: android.appwidget.AppWidgetManager?,
     onWidgetSelected: (android.appwidget.AppWidgetProviderInfo) -> Unit,
     onDismiss: () -> Unit,
+    hazeState: HazeState,
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -371,7 +402,14 @@ fun WidgetPickerCarousel(
                 onClick = onDismiss,
                 modifier = Modifier
                     .size(32.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(8.dp))
+                    .hazeChild(state = hazeState, blurRadius = 8.dp)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
             ) {
                 Icon(
                     Icons.Default.Close,
@@ -396,7 +434,8 @@ fun WidgetPickerCarousel(
                 items(availableWidgets) { widgetInfo ->
                     WidgetPreviewCard(
                         widgetInfo = widgetInfo,
-                        onClick = { onWidgetSelected(widgetInfo) }
+                        onClick = { onWidgetSelected(widgetInfo) },
+                        hazeState = hazeState
                     )
                 }
             }
@@ -421,6 +460,7 @@ fun WidgetPickerCarousel(
 fun WidgetPreviewCard(
     widgetInfo: android.appwidget.AppWidgetProviderInfo,
     onClick: () -> Unit,
+    hazeState: dev.chrisbanes.haze.HazeState,
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -442,14 +482,19 @@ fun WidgetPreviewCard(
         }
     }
 
-    Card(
+    // Glass morphism card for widget preview
+    Box(
         modifier = modifier
             .aspectRatio(1f)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Black.copy(alpha = 0.6f)
-        )
+            .clip(RoundedCornerShape(16.dp))
+            .hazeChild(state = hazeState, blurRadius = 12.dp)
+            .background(Color.Black.copy(alpha = 0.6f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable { onClick() }
     ) {
         Column(
             modifier = Modifier

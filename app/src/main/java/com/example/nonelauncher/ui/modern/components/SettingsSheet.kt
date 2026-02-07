@@ -2,6 +2,7 @@ package com.example.nonelauncher.ui.modern.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,8 +30,10 @@ import com.example.nonelauncher.data.local.entity.Intention
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -73,7 +76,12 @@ fun SettingsSheet(
                     .fillMaxSize()
                     .clip(RoundedCornerShape(32.dp))
                     .hazeChild(state = hazeState, blurRadius = 16.dp)
-                    .background(Color.Black.copy(alpha = 0.6f))
+                    .background(Color.Black.copy(alpha = 0.46f))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.25f),
+                        shape = RoundedCornerShape(32.dp)
+                    )
             ) {
                 Column(
                     modifier = Modifier
@@ -97,7 +105,7 @@ fun SettingsSheet(
                     }
 
                     // Mode Toggle
-                    ModeToggle(isModern = true, onLegacyClick = onLegacyMode)
+                    ModeToggle(isModern = true, onLegacyClick = onLegacyMode, hazeState)
 
                     // Wallpaper Button
                     Button(
@@ -145,7 +153,7 @@ fun SettingsSheet(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(recentIntentions) { intention ->
-                                IntentionCard(intention)
+                                IntentionCard(intention, hazeState)
                             }
                         }
                     }
@@ -163,7 +171,7 @@ fun SettingsSheet(
                             contentPadding = PaddingValues(horizontal = 10.dp)
                         ) {
                             items(focusApps) { app ->
-                                FocusAppItem(app, onToggle = { onToggleFocusApp(app) })
+                                FocusAppItem(app, onToggle = { onToggleFocusApp(app) }, hazeState)
                             }
                         }
                     }
@@ -185,7 +193,8 @@ fun SettingsSheet(
                         onBlur = {
                             if (!isFocusMode) onToggleFocusMode()
                             if (!isBlur) onToggleBlur()
-                        }
+                        },
+                        hazeState = hazeState
                     )
                 }
             }
@@ -194,70 +203,88 @@ fun SettingsSheet(
 }
 
 @Composable
-fun ModeToggle(isModern: Boolean, onLegacyClick: () -> Unit) {
-    Row(
+fun ModeToggle(isModern: Boolean, onLegacyClick: () -> Unit, hazeState: HazeState) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.Black.copy(alpha = 0.5f)),
-        verticalAlignment = Alignment.CenterVertically
+            .hazeChild(state = hazeState, blurRadius = 12.dp)
+            .background(Color.Black.copy(alpha = 0.5f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(12.dp)
+            ),
     ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .padding(4.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(if (isModern) OrangePrimary else Color.Black.copy(alpha = 0.4f)),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Modern", color = Color.White, fontWeight = FontWeight.SemiBold)
-        }
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .padding(4.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .clickable { onLegacyClick() }
-                .background(if (!isModern) OrangePrimary else Color.Black.copy(alpha = 0.4f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Legacy", color = Color.White, fontWeight = FontWeight.SemiBold)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isModern) OrangePrimary else Color.Black.copy(alpha = 0.4f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Modern", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onLegacyClick() }
+                    .background(if (!isModern) OrangePrimary else Color.Black.copy(alpha = 0.4f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Legacy", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
 
 @Composable
-fun IntentionCard(intention: Intention) {
-    Column(
+fun IntentionCard(intention: Intention, hazeState: dev.chrisbanes.haze.HazeState) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
+            .hazeChild(state = hazeState, blurRadius = 12.dp)
             .background(Color.Black.copy(alpha = 0.6f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(16.dp)
+            )
             .padding(16.dp)
     ) {
-        Text(
-            text = "${intention.appLabel}: ${intention.intentionText}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(0.9f),
-            fontWeight = FontWeight.Medium
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        val date = remember(intention.timestamp) {
-            SimpleDateFormat("'Today', h:mm a", Locale.getDefault()).format(intention.timestamp)
+        Column {
+            Text(
+                text = "${intention.appLabel}: ${intention.intentionText}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(0.9f),
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            val date = remember(intention.timestamp) {
+                SimpleDateFormat("'Today', h:mm a", Locale.getDefault()).format(intention.timestamp)
+            }
+            Text(
+                text = date,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(0.4f)
+            )
         }
-        Text(
-            text = date,
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(0.4f)
-        )
     }
 }
 
 @Composable
-fun FocusAppItem(app: AppModel, onToggle: () -> Unit) {
+fun FocusAppItem(app: AppModel, onToggle: () -> Unit, hazeState: dev.chrisbanes.haze.HazeState) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.clickable { onToggle() }
@@ -266,7 +293,13 @@ fun FocusAppItem(app: AppModel, onToggle: () -> Unit) {
             modifier = Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(if (app.isFocusApp) OrangePrimary else Color.Black.copy(alpha = 0.5f)),
+                .hazeChild(state = hazeState, blurRadius = 12.dp)
+                .background(if (app.isFocusApp) OrangePrimary else Color.Black.copy(alpha = 0.5f))
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(16.dp)
+                ),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -297,7 +330,8 @@ fun BottomModeSelector(
     isBlur: Boolean,
     onNormal: () -> Unit,
     onFocus: () -> Unit,
-    onBlur: () -> Unit
+    onBlur: () -> Unit,
+    hazeState: HazeState
 ) {
     val selection = when {
         isFocus && isBlur -> 2
@@ -305,63 +339,73 @@ fun BottomModeSelector(
         else -> 0
     }
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.Black.copy(alpha = 0.7f)),
-        verticalAlignment = Alignment.CenterVertically
+            .hazeChild(state = hazeState, blurRadius = 16.dp)
+            .background(Color.Black.copy(alpha = 0.7f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(16.dp)
+            ),
     ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .padding(vertical = 8.dp, horizontal = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (selection == 0) OrangePrimary else Color.Transparent)
-                .clickable(onClick = onNormal),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Normal",
-                color = if (selection == 0) Color.White else Color.White.copy(0.4f),
-                fontWeight = if (selection == 0) FontWeight.Bold else FontWeight.Normal
-            )
-        }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(vertical = 8.dp, horizontal = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selection == 0) OrangePrimary else Color.Transparent)
+                    .clickable(onClick = onNormal),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Normal",
+                    color = if (selection == 0) Color.White else Color.White.copy(0.4f),
+                    fontWeight = if (selection == 0) FontWeight.Bold else FontWeight.Normal
+                )
+            }
 
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .padding(vertical = 8.dp, horizontal = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (selection == 1) OrangePrimary else Color.Transparent)
-                .clickable(onClick = onFocus),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "Focus",
-                color = if (selection == 1) Color.White else Color.White.copy(0.4f),
-                fontWeight = if (selection == 1) FontWeight.Bold else FontWeight.Normal
-            )
-        }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(vertical = 8.dp, horizontal = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selection == 1) OrangePrimary else Color.Transparent)
+                    .clickable(onClick = onFocus),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Focus",
+                    color = if (selection == 1) Color.White else Color.White.copy(0.4f),
+                    fontWeight = if (selection == 1) FontWeight.Bold else FontWeight.Normal
+                )
+            }
 
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .padding(vertical = 8.dp, horizontal = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (selection == 2) OrangePrimary else Color.Transparent)
-                .clickable(onClick = onBlur),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "Blur",
-                color = if (selection == 2) Color.White else Color.White.copy(0.4f),
-                fontWeight = if (selection == 2) FontWeight.Bold else FontWeight.Normal
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(vertical = 8.dp, horizontal = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selection == 2) OrangePrimary else Color.Transparent)
+                    .clickable(onClick = onBlur),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Blur",
+                    color = if (selection == 2) Color.White else Color.White.copy(0.4f),
+                    fontWeight = if (selection == 2) FontWeight.Bold else FontWeight.Normal
+                )
+            }
         }
     }
 }

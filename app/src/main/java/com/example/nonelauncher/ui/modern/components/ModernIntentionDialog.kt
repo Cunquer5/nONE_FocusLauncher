@@ -2,6 +2,7 @@ package com.example.nonelauncher.ui.modern.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism.glassBackground
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism.hazeBackground
+import dev.chrisbanes.haze.HazeState
 
 @Composable
 fun ModernIntentionDialog(
@@ -131,44 +133,28 @@ ${app.label}?""",
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Cancel Button
-                            Button(
+                            com.example.nonelauncher.ui.components.GlassMorphismButton(
                                 onClick = onDismiss,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Black.copy(alpha = 0.6f)
-                                ),
-                                shape = RoundedCornerShape(50),
+                                text = "Cancel",
+                                hazeState = hazeState,
+                                color = Color.Black.copy(alpha = 0.6f),
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(56.dp)
-                            ) {
-                                Text(
-                                    text = "Cancel",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                            )
 
                             // Proceed Button
-                            Button(
+                            com.example.nonelauncher.ui.components.GlassMorphismButton(
                                 onClick = {
                                     if (intentionText.isNotBlank()) onConfirm(intentionText)
                                 },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = primaryColor
-                                ),
-                                shape = RoundedCornerShape(50),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                text = "Proceed →",
+                                hazeState = hazeState,
+                                color = primaryColor,
                                 modifier = Modifier
                                     .weight(1.4f)
                                     .height(56.dp)
-                            ) {
-                                Text(
-                                    text = "Proceed →",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1
-                                )
-                            }
+                            )
                         }
                     }
                 }
