@@ -32,7 +32,6 @@ import java.util.Locale
 @Composable
 fun SettingsSheet(
     recentIntentions: List<Intention>,
-    onLegacyMode: () -> Unit,
     onWallpaperClick: () -> Unit,
     onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -86,9 +85,6 @@ fun SettingsSheet(
                         )
                     }
 
-                    // Modern / Legacy mode toggle
-                    ModeToggle(isModern = true, onLegacyClick = onLegacyMode, hazeState)
-
                     // Wallpaper button
                     Button(
                         onClick = onWallpaperClick,
@@ -139,52 +135,6 @@ fun SettingsSheet(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun ModeToggle(isModern: Boolean, onLegacyClick: () -> Unit, hazeState: HazeState) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .hazeChild(state = hazeState, blurRadius = 12.dp)
-            .background(Color.Black.copy(alpha = 0.5f))
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(12.dp)
-            )
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(4.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isModern) OrangePrimary else Color.Black.copy(alpha = 0.4f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Modern", color = Color.White, fontWeight = FontWeight.SemiBold)
-            }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(4.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onLegacyClick() }
-                    .background(if (!isModern) OrangePrimary else Color.Black.copy(alpha = 0.4f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Legacy", color = Color.White, fontWeight = FontWeight.SemiBold)
             }
         }
     }

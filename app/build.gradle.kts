@@ -2,7 +2,6 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
-    id("com.google.dagger.hilt.android")
     id("org.jetbrains.kotlin.android")
 }
 
@@ -58,7 +57,6 @@ dependencies {
     // Version catalogs for library dependencies
     val composeBom = "androidx.compose:compose-bom:2024.06.00"
     val roomVersion = "2.7.0-alpha11"
-    val hiltVersion = "2.58"
     val navigationVersion = "2.7.5"
 
     // Core Android libraries
@@ -82,18 +80,10 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:$navigationVersion")
 
-    // Data persistence
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
-
     // Room database with Kotlin extensions
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
-
-    // Dependency Injection (Hilt)
-    implementation("com.google.dagger:hilt-android:$hiltVersion")
-    ksp("com.google.dagger:hilt-compiler:$hiltVersion")
-    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
     // Haze library for glass morphism effects
     implementation("dev.chrisbanes.haze:haze-jetpack-compose:0.5.0")

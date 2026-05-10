@@ -11,16 +11,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.data.model.parseOneThingTaskWithState
-import com.example.nonelauncher.ui.MainViewModel
 import com.example.nonelauncher.ui.home.HomeViewModel
-import com.example.nonelauncher.ui.modes.LauncherUiMode
 import com.example.nonelauncher.ui.modern.components.*
 import kotlinx.coroutines.launch
 import dev.chrisbanes.haze.HazeState
 
 @Composable
 fun ModernHomeScreen(
-    mainViewModel: MainViewModel = viewModel(),
     homeViewModel: HomeViewModel = viewModel(),
     onOpenSettings: () -> Unit = {}
 ) {
@@ -120,10 +117,6 @@ fun ModernHomeScreen(
                     .padding(horizontal = 8.dp)
                     .fillMaxHeight(0.85f),
                 recentIntentions = uiState.recentIntentions,
-                onLegacyMode = {
-                    mainViewModel.setUiMode(LauncherUiMode.LEGACY)
-                    showSettings = false
-                },
                 onWallpaperClick = { showWallpaperDialog = true },
                 onHistoryClick = {
                     showHistory = true

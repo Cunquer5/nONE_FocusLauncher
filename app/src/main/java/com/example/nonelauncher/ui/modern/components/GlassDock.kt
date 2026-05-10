@@ -60,7 +60,7 @@ fun GlassDock(
                     state = hazeState,
                     style = HazeStyle(blurRadius = 20.dp)
                 )
-                .background(Color(0xFF0F0F0F).copy(alpha = 9f))
+                .background(Color(0xFF0F0F0F).copy(alpha = 0.55f))
                 .border(
                     width = 1.dp,
                     color = Color.White.copy(alpha = 0.25f),

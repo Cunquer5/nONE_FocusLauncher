@@ -8,7 +8,6 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,7 +20,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,19 +32,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nonelauncher.ui.home.HomeScreen
-import com.example.nonelauncher.ui.modes.LauncherUiMode
 import com.example.nonelauncher.ui.modern.ModernHomeScreen
 
 @Composable
-fun LauncherScreen(
-    mainViewModel: MainViewModel = viewModel()
-) {
+fun LauncherScreen() {
     val context = LocalContext.current
     var isDefaultLauncher by remember { mutableStateOf(isDefaultLauncher(context)) }
     val lifecycleOwner = LocalLifecycleOwner.current
-    val uiMode by mainViewModel.uiMode.collectAsState(initial = LauncherUiMode.LEGACY)
 
     val roleLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -57,22 +49,13 @@ fun LauncherScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> {
-                    // Re-verify launcher status on every resume
-                    // This handles navigation from recents, settings, etc.
-                    isDefaultLauncher = isDefaultLauncher(context)
-                }
-                Lifecycle.Event.ON_START -> {
-                    // Additional check on start for cold launches
-                    isDefaultLauncher = isDefaultLauncher(context)
-                }
+                Lifecycle.Event.ON_RESUME,
+                Lifecycle.Event.ON_START -> isDefaultLauncher = isDefaultLauncher(context)
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     if (!isDefaultLauncher) {
@@ -94,8 +77,7 @@ fun LauncherScreen(
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val roleManager = context.getSystemService(RoleManager::class.java)
                         if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) {
-                            val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
-                            roleLauncher.launch(intent)
+                            roleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME))
                         } else {
                             openFallbackHomeSettings(context)
                         }
@@ -108,40 +90,26 @@ fun LauncherScreen(
             }
         }
     } else {
-        Crossfade(targetState = uiMode, label = "UiTransition") { mode ->
-            when (mode) {
-                LauncherUiMode.LEGACY -> HomeScreen(
-                    onOpenModernSettings = {
-                        // This can be used if we need to deep link or trigger something
-                    }
-                )
-                LauncherUiMode.MODERN -> ModernHomeScreen(
-                    onOpenSettings = {
-                        mainViewModel.setUiMode(LauncherUiMode.LEGACY)
-                    }
-                )
-            }
-        }
+        ModernHomeScreen()
     }
 }
 
 fun isDefaultLauncher(context: Context): Boolean {
-    val intent = Intent(Intent.ACTION_MAIN)
-    intent.addCategory(Intent.CATEGORY_HOME)
+    val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
     val resolveInfo = context.packageManager.resolveActivity(intent, 0)
     return resolveInfo?.activityInfo?.packageName == context.packageName
 }
 
 fun openFallbackHomeSettings(context: Context) {
     try {
-        val intent = Intent(Settings.ACTION_HOME_SETTINGS)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        context.startActivity(
+            Intent(Settings.ACTION_HOME_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        )
     } catch (e: Exception) {
         try {
-            val intent = Intent(Settings.ACTION_SETTINGS)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
+            context.startActivity(
+                Intent(Settings.ACTION_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            )
             Toast.makeText(context, "Please set nONE Launcher as Default Home App in Settings", Toast.LENGTH_LONG).show()
         } catch (e2: Exception) {
             Toast.makeText(context, "Unable to open Settings", Toast.LENGTH_SHORT).show()

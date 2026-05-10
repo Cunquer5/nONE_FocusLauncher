@@ -8,8 +8,5 @@ data class AppModel(
     val packageName: String,
     val label: String,
     val icon: ImageBitmap,
-    val isFocusApp: Boolean = false,
-    val isEssential: Boolean = false,
-    // Transient property for UI state, not persisted
-    val isFocusMode: Boolean = false
+    val isEssential: Boolean = false
 )

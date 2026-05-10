@@ -11,17 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 class UserPreferencesRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val _isFocusModeEnabled = MutableStateFlow(prefs.getBoolean(KEY_FOCUS_ENABLED, false))
-    val isFocusModeEnabled: StateFlow<Boolean> = _isFocusModeEnabled.asStateFlow()
-
-    private val _isBlurEnabled = MutableStateFlow(prefs.getBoolean(KEY_BLUR_ENABLED, false))
-    val isBlurEnabled: StateFlow<Boolean> = _isBlurEnabled.asStateFlow()
-
-    private val _focusAppPackages = MutableStateFlow(
-        prefs.getStringSet(KEY_FOCUS_APPS, emptySet()) ?: emptySet()
-    )
-    val focusAppPackages: StateFlow<Set<String>> = _focusAppPackages.asStateFlow()
-
     private val _oneThingTask = MutableStateFlow(prefs.getString(KEY_ONE_THING_TASK, null))
     val oneThingTask: StateFlow<String?> = _oneThingTask.asStateFlow()
 
@@ -29,21 +18,6 @@ class UserPreferencesRepository(context: Context) {
         parseOneThingTaskWithState(prefs.getString(KEY_ONE_THING_TASK_STATE, null))
     )
     val oneThingTaskWithState: StateFlow<OneThingTask?> = _oneThingTaskWithState.asStateFlow()
-
-    fun setFocusModeEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_FOCUS_ENABLED, enabled).apply()
-        _isFocusModeEnabled.value = enabled
-    }
-
-    fun setBlurEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_BLUR_ENABLED, enabled).apply()
-        _isBlurEnabled.value = enabled
-    }
-
-    fun setFocusApps(packages: Set<String>) {
-        prefs.edit().putStringSet(KEY_FOCUS_APPS, packages).apply()
-        _focusAppPackages.value = packages
-    }
 
     fun setOneThingTask(task: String?) {
         prefs.edit().putString(KEY_ONE_THING_TASK, task).apply()
@@ -92,9 +66,6 @@ class UserPreferencesRepository(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "focus_prefs"
-        private const val KEY_FOCUS_ENABLED = "focus_mode_enabled"
-        private const val KEY_BLUR_ENABLED = "blur_enabled"
-        private const val KEY_FOCUS_APPS = "focus_app_packages"
         private const val KEY_ONE_THING_TASK = "one_thing_task"
         private const val KEY_ONE_THING_TASK_STATE = "one_thing_task_with_state"
     }
