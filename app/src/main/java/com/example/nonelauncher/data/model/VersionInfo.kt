@@ -9,6 +9,18 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.4.0",
+        versionCode = 8,
+        releaseDate = "2026-05-11",
+        features = listOf(
+            "Legacy UI mode removed - now single Modern UI only",
+            "App grid replaced: swipe down from home screen to activate app search",
+            "Simplified home screen with dock navigation only",
+            "Removed separate widgets section - integrated into search",
+            "Cleaner, minimal interface focused on productivity"
+        )
+    ),
+    VersionInfo(
         versionName = "1.3.3",
         versionCode = 7,
         releaseDate = "2026-02-07",

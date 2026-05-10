@@ -19,8 +19,8 @@ android {
         applicationId = "com.example.nonelauncher"
         minSdk = MIN_SDK
         targetSdk = TARGET_SDK
-        versionCode = 7
-        versionName = "1.3.3"
+        versionCode = 8
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -30,7 +30,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
         }
     }
 

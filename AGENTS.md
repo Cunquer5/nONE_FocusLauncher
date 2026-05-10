@@ -6,6 +6,8 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 **nONE FocusLauncher** is a minimalist Android system launcher built with Kotlin and Jetpack Compose. It uses a productivity-focused design with features like grayscale focus mode, intention prompts, and a "1 Thing" task manager. The app targets Android API 28+ and uses modern Android architecture (MVVM).
 
+**Note**: As of v1.4.0, the Legacy UI mode has been removed. The launcher now uses a single Modern UI design with a swipe-down-to-search app discovery pattern.
+
 ## Build & Development Commands
 
 ### Building the Project
@@ -59,21 +61,16 @@ The app follows a strict MVVM architecture:
 - **Repository Layer**: Data access abstraction
 - **Data Layer**: Room database + SharedPreferences for persistence
 
-### Dual UI System
-The launcher supports **two distinct UI modes** that can be switched at runtime:
+### Single UI System (v1.4.0+)
+As of v1.4.0, the launcher uses a **single Modern UI** design. The Legacy UI mode has been removed.
 
-1. **LEGACY Mode** (`ui/home/HomeScreen.kt`):
-   - Original simplified launcher interface
-   - Basic app grid with focus mode toggles
-   
-2. **MODERN Mode** (`ui/modern/ModernHomeScreen.kt`):
+**MODERN Mode** (`ui/modern/ModernHomeScreen.kt`):
    - Black glass morphism design with backdrop blur
    - Orange (#FF4D00) brand accent for active states
    - Integrated dock navigation (Apps, 1 Thing, Settings)
    - Widget support with AppWidgetHost
+   - Swipe-down-to-search app discovery pattern (replaces traditional app grid)
    - Advanced features: intention history, wallpaper selection, mode selector (Normal/Focus/Blur)
-
-**UI Mode Switching**: Managed by `UiModeManager` using DataStore. The `LauncherScreen.kt` acts as a router that uses `Crossfade` animation to switch between modes based on `MainViewModel.uiMode` state.
 
 ### Data Flow Architecture
 
@@ -90,29 +87,29 @@ The launcher supports **two distinct UI modes** that can be switched at runtime:
 - `UiModeManager`: UI mode persistence via DataStore
 
 ### Dependency Injection
-**Important**: This project does **NOT** use Hilt/Dagger despite dependencies being declared in `build.gradle.kts`. The codebase uses **manual dependency injection**:
+This project uses **manual dependency injection**:
 - ViewModels instantiate repositories directly in constructors
 - Application context is passed to repositories via AndroidViewModel
-- No `@HiltAndroidApp`, `@AndroidEntryPoint`, or `@Inject` annotations are used
+- No Hilt, Dagger, or other DI frameworks are used
 
 ### Package Structure
 ```
 com.example.nonelauncher/
 ├── data/
 │   ├── local/           # Room database, DAOs, entities
-│   ├── model/           # Data models (AppModel, UiMode, VersionInfo)
-│   ├── repository/      # Repository pattern implementations
-│   └── UiModeManager.kt # UI mode state management
+│   ├── model/           # Data models (AppModel, VersionInfo)
+│   └── repository/      # Repository pattern implementations
 ├── ui/
-│   ├── components/      # Reusable UI components (AppIcon, IntentionDialog)
-│   ├── home/            # Legacy UI mode screen + ViewModel
+│   ├── components/      # Reusable UI components (AppIcon, IntentionDialog, GlassCard)
+│   ├── home/            # HomeViewModel (Legacy mode placeholder - not used)
 │   ├── modern/          # Modern UI mode screen + glass morphism components
-│   ├── modes/           # LauncherUiMode enum
 │   ├── theme/           # Material 3 theming + glass morphism utilities
-│   ├── LauncherScreen.kt  # Root launcher router
-│   └── MainViewModel.kt   # Top-level UI mode state
+│   ├── LauncherScreen.kt  # Root launcher router (single Modern UI)
+│   └── MainViewModel.kt   # Top-level UI state
 └── MainActivity.kt      # Entry point with AppWidgetHost setup
 ```
+
+**Note**: Legacy UI mode was removed in v1.4.0. The launcher now uses a single Modern UI with swipe-down-to-search pattern.
 
 ### Critical Implementation Details
 
@@ -157,8 +154,8 @@ Required permissions in AndroidManifest.xml:
 - `REQUEST_DELETE_PACKAGES`: App uninstall support
 
 ### Version Info
-- **Current Version**: 1.3.3 (versionCode 7)
-- **Target SDK**: 34 (Android 14)
+- **Current Version**: 1.4.0 (versionCode 8)
+- **Target SDK**: 35 (Android 15)
 - **Min SDK**: 28 (Android 9)
 - **Java Version**: 17
 - **Kotlin Version**: 2.2.10
