@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import com.example.nonelauncher.ui.theme.apiAwareBlur
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
@@ -33,7 +32,6 @@ fun GlassDock(
     activeItem: DockItemType = DockItemType.NONE,
     onPhoneClick: () -> Unit,
     onOneThingClick: () -> Unit,
-    onAppsClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -43,19 +41,17 @@ fun GlassDock(
             .padding(horizontal = 24.dp, vertical = 32.dp)
             .height(80.dp)
     ) {
-        // LAYER 1: Background with Haze blur (BEHIND content)
+        // LAYER 1: Background with Haze blur
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .haze(
                     state = hazeState,
-                    style = HazeStyle(
-                        tint = Color.Transparent
-                    )
+                    style = HazeStyle(tint = Color.Transparent)
                 )
         )
-        
-        // LAYER 2: Glass surface + Content (NO BLUR ON CONTENT)
+
+        // LAYER 2: Glass surface + content
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -64,14 +60,13 @@ fun GlassDock(
                     state = hazeState,
                     style = HazeStyle(blurRadius = 20.dp)
                 )
-                .background(Color(0xFF0F0F0F).copy(alpha = 0.55f))
+                .background(Color(0xFF0F0F0F).copy(alpha = 9f))
                 .border(
                     width = 1.dp,
                     color = Color.White.copy(alpha = 0.25f),
                     shape = RoundedCornerShape(40.dp)
                 )
         ) {
-            // Content layer (stays sharp)
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -79,6 +74,7 @@ fun GlassDock(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Phone
                 DockItem(
                     icon = Icons.Default.Call,
                     label = "Phone",
@@ -87,11 +83,12 @@ fun GlassDock(
                     showLabel = false
                 )
 
+                // 1 Thing — centre focal item
                 Box(
                     modifier = Modifier
                         .height(63.dp)
                         .clip(RoundedCornerShape(33.dp))
-                        .background(Color.Black.copy(alpha = 0.5f))
+                        //.background(Color.Black.copy(alpha = 0.5f))
                         .clickable(onClick = onOneThingClick)
                         .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 16.dp else 0.dp),
                     contentAlignment = Alignment.Center
@@ -108,34 +105,23 @@ fun GlassDock(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-
                         AnimatedVisibility(
                             visible = activeItem == DockItemType.ONE_THING,
                             enter = expandHorizontally() + fadeIn(),
                             exit = shrinkHorizontally() + fadeOut()
                         ) {
-                            Row {
-                                Text(
-                                    text = "Thing",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 17.sp,
-                                    modifier = Modifier.padding(start = 1.dp)
-                                )
-                            }
+                            Text(
+                                text = "Thing",
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 17.sp,
+                                modifier = Modifier.padding(start = 1.dp)
+                            )
                         }
                     }
                 }
 
-                DockItem(
-                    icon = null,
-                    label = "App Grid",
-                    isActive = activeItem == DockItemType.APPS,
-                    onClick = onAppsClick,
-                    showLabel = true,
-                    customIcon = { isActive -> RoundedGridIcon(isActive) }
-                )
-
+                // Settings
                 DockItem(
                     icon = Icons.Default.Settings,
                     label = "Settings",
@@ -149,27 +135,8 @@ fun GlassDock(
 }
 
 @Composable
-fun RoundedGridIcon(isActive: Boolean = false) {
-    val iconColor = if (isActive) Color(0xFFFF4D00) else Color(0xFFE0E0E0)
-    Column(
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.size(26.dp)
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Box(Modifier.size(10.dp).background(iconColor, RoundedCornerShape(2.dp)))
-            Box(Modifier.size(10.dp).background(iconColor, RoundedCornerShape(2.dp)))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Box(Modifier.size(10.dp).background(iconColor, RoundedCornerShape(2.dp)))
-            Box(Modifier.size(10.dp).background(iconColor, RoundedCornerShape(2.dp)))
-        }
-    }
-}
-
-@Composable
 fun DockItem(
-    icon: ImageVector?, 
+    icon: ImageVector?,
     label: String,
     isActive: Boolean,
     onClick: () -> Unit,
@@ -183,10 +150,10 @@ fun DockItem(
             .then(if (isActive) Modifier.background(Color.Black.copy(alpha = 0.55f)) else Modifier)
             .clickable(onClick = onClick)
             .then(
-                if (isActive && showLabel) 
-                    Modifier.widthIn(min = 48.dp) // Allow natural width when active
-                else 
-                    Modifier.width(48.dp) // Fixed width when inactive
+                if (isActive && showLabel)
+                    Modifier.widthIn(min = 48.dp)
+                else
+                    Modifier.width(48.dp)
             )
             .padding(horizontal = if (isActive && showLabel) 12.dp else 0.dp),
         contentAlignment = Alignment.Center
@@ -197,8 +164,8 @@ fun DockItem(
             modifier = Modifier.wrapContentWidth()
         ) {
             Box(
-                 modifier = Modifier.size(48.dp),
-                 contentAlignment = Alignment.Center
+                modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.Center
             ) {
                 if (customIcon != null) {
                     customIcon(isActive)
@@ -211,7 +178,7 @@ fun DockItem(
                     )
                 }
             }
-            
+
             AnimatedVisibility(
                 visible = isActive && showLabel,
                 enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
@@ -219,7 +186,7 @@ fun DockItem(
             ) {
                 Text(
                     text = label,
-                    color = /*if (isActive) Color(0xFFFF4D00) else */Color.White,
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     maxLines = 1,

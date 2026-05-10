@@ -3,7 +3,6 @@ package com.example.nonelauncher.ui
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
@@ -42,8 +41,6 @@ import com.example.nonelauncher.ui.modern.ModernHomeScreen
 
 @Composable
 fun LauncherScreen(
-    appWidgetHost: android.appwidget.AppWidgetHost? = null,
-    appWidgetManager: android.appwidget.AppWidgetManager? = null,
     mainViewModel: MainViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -119,10 +116,7 @@ fun LauncherScreen(
                     }
                 )
                 LauncherUiMode.MODERN -> ModernHomeScreen(
-                    appWidgetHost = appWidgetHost,
-                    appWidgetManager = appWidgetManager,
                     onOpenSettings = {
-                        // In Modern mode, we might want a way to switch back
                         mainViewModel.setUiMode(LauncherUiMode.LEGACY)
                     }
                 )

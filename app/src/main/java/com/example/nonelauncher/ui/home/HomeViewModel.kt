@@ -7,7 +7,6 @@ import com.example.nonelauncher.data.local.AppDatabase
 import com.example.nonelauncher.data.local.entity.Intention
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.data.model.OneThingTask
-import com.example.nonelauncher.data.model.SubTask
 import com.example.nonelauncher.data.repository.AppRepository
 import com.example.nonelauncher.data.repository.IntentionRepository
 import com.example.nonelauncher.data.repository.UserPreferencesRepository
@@ -32,33 +31,26 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _recentIntentions = intentionRepository.getAllIntentions().map { it }
 
     private val _userPrefsFlow = combine(
-        combine(
-            prefsRepository.isFocusModeEnabled,
-            prefsRepository.isBlurEnabled,
-            prefsRepository.focusAppPackages
-        ) { isFocusMode, isBlur, focusPackages ->
-            Triple(isFocusMode, isBlur, focusPackages)
-        },
-        combine(
-            prefsRepository.gridColumns,
-            prefsRepository.appOrder,
-            prefsRepository.widgetIds
-        ) { columns, order, widgetIds ->
-            Triple(columns, order, widgetIds)
-        }
-    ) { first, second ->
+        prefsRepository.isFocusModeEnabled,
+        prefsRepository.isBlurEnabled,
+        prefsRepository.focusAppPackages
+    ) { isFocusMode, isBlur, focusPackages ->
         Prefs(
-            isFocusMode = first.first,
-            isBlur = first.second,
-            focusPackages = first.third,
-            columns = second.first,
-            appOrder = second.second,
-            widgetIds = second.third
+            isFocusMode = isFocusMode,
+            isBlur = isBlur,
+            focusPackages = focusPackages
         )
     }
 
     val uiState: StateFlow<HomeUiState> = combine(
-        listOf(_installedApps, _userPrefsFlow, _recentIntentions, _searchQuery, prefsRepository.oneThingTask, prefsRepository.oneThingTaskWithState)
+        listOf(
+            _installedApps,
+            _userPrefsFlow,
+            _recentIntentions,
+            _searchQuery,
+            prefsRepository.oneThingTask,
+            prefsRepository.oneThingTaskWithState
+        )
     ) { values ->
         @Suppress("UNCHECKED_CAST")
         val apps = values[0] as List<AppModel>
@@ -72,44 +64,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val oneThing = values[4] as String?
         @Suppress("UNCHECKED_CAST")
         val oneThingWithState = values[5] as OneThingTask?
-        
-        val filteredApps = apps.map { app ->
-            app.copy(isFocusMode = prefs.isFocusMode, isFocusApp = prefs.focusPackages.contains(app.packageName))
-        }.filter { 
-            it.label.contains(query, ignoreCase = true)
-        }
 
-        val sortedApps = if (query.isEmpty()) {
-            if (prefs.appOrder.isNotEmpty()) {
-                // Create a map of package name to index for O(1) lookup
-                val orderMap = prefs.appOrder.withIndex().associate { it.value to it.index }
-                
-                filteredApps.sortedWith(
-                    compareBy<AppModel> { orderMap[it.packageName] ?: Int.MAX_VALUE }
-                        .thenByDescending { it.isFocusApp }
-                        .thenBy { it.label.lowercase() }
-                )
-            } else {
-                // Default Sort
-                filteredApps.sortedWith(
-                    compareByDescending<AppModel> { it.isFocusApp }
-                        .thenBy { it.label.lowercase() }
-                )
-            }
-        } else {
-            filteredApps.sortedBy { it.label.lowercase() }
-        }
+        val processedApps = apps.map { app ->
+            app.copy(
+                isFocusMode = prefs.isFocusMode,
+                isFocusApp = prefs.focusPackages.contains(app.packageName)
+            )
+        }.sortedWith(
+            compareByDescending<AppModel> { it.isFocusApp }
+                .thenBy { it.label.lowercase() }
+        )
 
         HomeUiState(
-            apps = sortedApps,
+            apps = processedApps,
             isFocusModeEnabled = prefs.isFocusMode,
             isBlurEnabled = prefs.isBlur,
             recentIntentions = intentions,
             searchQuery = query,
-            gridColumns = prefs.columns,
             oneThingTask = oneThing,
-            oneThingTaskWithState = oneThingWithState,
-            widgetIds = prefs.widgetIds
+            oneThingTaskWithState = oneThingWithState
         )
     }
     .flowOn(Dispatchers.Default)
@@ -140,21 +113,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleFocusMode() {
-        val current = uiState.value.isFocusModeEnabled
-        prefsRepository.setFocusModeEnabled(!current)
+        prefsRepository.setFocusModeEnabled(!uiState.value.isFocusModeEnabled)
     }
 
     fun toggleBlur() {
-        val current = uiState.value.isBlurEnabled
-        prefsRepository.setBlurEnabled(!current)
-    }
-
-    fun updateGridColumns(columns: Int) {
-        prefsRepository.setGridColumns(columns)
-    }
-    
-    fun updateWidgetIds(ids: List<Int>) {
-        prefsRepository.setWidgetIds(ids)
+        prefsRepository.setBlurEnabled(!uiState.value.isBlurEnabled)
     }
 
     fun toggleAppFocusStatus(packageName: String) {
@@ -170,22 +133,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun setOneThingTaskWithState(task: OneThingTask?) {
         prefsRepository.setOneThingTaskWithState(task)
     }
-    
+
     fun updateSubtaskState(subtaskId: String, isCompleted: Boolean) {
-        val currentTask = prefsRepository.oneThingTaskWithState.value
-        if (currentTask != null) {
-            val updatedSubTasks = currentTask.subTasks.map { subTask ->
+        val currentTask = prefsRepository.oneThingTaskWithState.value ?: return
+        val updatedTask = currentTask.copy(
+            subTasks = currentTask.subTasks.map { subTask ->
                 if (subTask.id == subtaskId) subTask.copy(isCompleted = isCompleted) else subTask
             }
-            val updatedTask = currentTask.copy(subTasks = updatedSubTasks)
-            prefsRepository.setOneThingTaskWithState(updatedTask)
-        }
+        )
+        prefsRepository.setOneThingTaskWithState(updatedTask)
     }
-    
+
     fun resetOneThingTask() {
         prefsRepository.setOneThingTaskWithState(null)
     }
-    
+
     fun setOneThingTask(task: String?) {
         prefsRepository.setOneThingTask(task)
     }
@@ -196,19 +158,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             onComplete()
         }
     }
-    
-    fun saveAppOrder(newOrder: List<AppModel>) {
-        val packageOrder = newOrder.map { it.packageName }
-        prefsRepository.setAppOrder(packageOrder)
-    }
 
     private data class Prefs(
         val isFocusMode: Boolean,
         val isBlur: Boolean,
-        val focusPackages: Set<String>,
-        val columns: Int,
-        val appOrder: List<String>,
-        val widgetIds: List<Int>
+        val focusPackages: Set<String>
     )
 }
 
@@ -218,8 +172,6 @@ data class HomeUiState(
     val isBlurEnabled: Boolean = false,
     val recentIntentions: List<Intention> = emptyList(),
     val searchQuery: String = "",
-    val gridColumns: Int = 4,
     val oneThingTask: String? = null,
-    val oneThingTaskWithState: OneThingTask? = null,
-    val widgetIds: List<Int> = emptyList()
+    val oneThingTaskWithState: OneThingTask? = null
 )

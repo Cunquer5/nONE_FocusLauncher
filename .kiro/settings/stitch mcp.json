@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["@_davideast/stitch-mcp", "proxy"],
+      "env": {
+        "STITCH_API_KEY": "AQ.Ab8RN6LirQsRoxfWEQ4NswTWzYFR5-ZEkh53aMuEcVgcD6R3fQ"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "filesystem": {
+      "command": "uvx",
+      "args": ["mcp-server-filesystem@latest", "."],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git@latest", "--repository", "."],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

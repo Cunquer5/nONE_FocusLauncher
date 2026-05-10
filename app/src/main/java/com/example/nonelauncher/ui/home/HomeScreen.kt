@@ -113,7 +113,6 @@ import com.example.nonelauncher.ui.components.AppIcon
 import com.example.nonelauncher.ui.components.IntentionDialog
 import com.example.nonelauncher.ui.modes.LauncherUiMode
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism.rememberHazeState
-import com.example.nonelauncher.ui.theme.AppGridSpacing
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -129,7 +128,6 @@ fun HomeScreen(
     val uiState by homeViewModel.uiState.collectAsState()
     val allIntentions by homeViewModel.allIntentions.collectAsState(initial = emptyList())
     val uiMode by mainViewModel.uiMode.collectAsState(initial = LauncherUiMode.LEGACY)
-    val (columnSpacing, rowSpacing) = AppGridSpacing.getSpacingForColumns(uiState.gridColumns)
 
     val hazeState = rememberHazeState()
 
@@ -241,7 +239,7 @@ fun HomeScreen(
                 }
 
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(uiState.gridColumns),
+                    columns = GridCells.Fixed(4),
                     state = gridState,
                     flingBehavior = ScrollableDefaults.flingBehavior(),
                     modifier = modifier
@@ -252,8 +250,8 @@ fun HomeScreen(
                         top = if (isSearchVisible) 16.dp else statusBarPadding + 24.dp,
                         bottom = navigationBarPadding + 80.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(rowSpacing),
-                    horizontalArrangement = Arrangement.spacedBy(columnSpacing)
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.apps, key = { it.packageName }) { app ->
                         val isAffectedByFocus = uiState.isFocusModeEnabled && !app.isFocusApp
@@ -264,7 +262,7 @@ fun HomeScreen(
                             app = app,
                             isGrayscale = isAffectedByFocus,
                             isBlurred = isAffectedByFocus && uiState.isBlurEnabled,
-                            gridColumns = uiState.gridColumns,
+                            gridColumns = 4,
                             onAppClick = {
                                 if (isSystemOrEssential) {
                                     val launchIntent =
@@ -354,17 +352,12 @@ fun HomeScreen(
                                 onToggleFocusMode = { homeViewModel.toggleFocusMode() },
                                 isBlurEnabled = uiState.isBlurEnabled,
                                 onToggleBlur = { homeViewModel.toggleBlur() },
-                                currentGridColumns = uiState.gridColumns,
-                                onUpdateGridColumns = { homeViewModel.updateGridColumns(it) },
                                 apps = uiState.apps,
                                 onToggleAppFocus = { homeViewModel.toggleAppFocusStatus(it.packageName) },
                                 onChangeWallpaper = {
                                     val intent = Intent(Intent.ACTION_SET_WALLPAPER)
                                     context.startActivity(
-                                        Intent.createChooser(
-                                            intent,
-                                            "Select Wallpaper"
-                                        )
+                                        Intent.createChooser(intent, "Select Wallpaper")
                                     )
                                 },
                                 recentIntentions = uiState.recentIntentions,
@@ -418,8 +411,6 @@ fun SettingsContent(
     onToggleFocusMode: () -> Unit,
     isBlurEnabled: Boolean,
     onToggleBlur: () -> Unit,
-    currentGridColumns: Int,
-    onUpdateGridColumns: (Int) -> Unit,
     apps: List<AppModel>,
     onToggleAppFocus: (AppModel) -> Unit,
     onChangeWallpaper: () -> Unit,
@@ -507,26 +498,6 @@ fun SettingsContent(
             Switch(checked = isBlurEnabled, onCheckedChange = { onToggleBlur() })
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("App Grid Size", style = MaterialTheme.typography.titleMedium)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(4, 5, 6).forEach { size ->
-                OutlinedButton(
-                    onClick = { onUpdateGridColumns(size) },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = if (currentGridColumns == size) 
-                        androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) 
-                        else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Text("$size per row")
-                }
-            }
-        }
-        
         Spacer(modifier = Modifier.height(16.dp))
         Text("Manage Focus Apps", style = MaterialTheme.typography.titleMedium)
         Text("Select apps that remain colorful in Focus Mode", style = MaterialTheme.typography.bodySmall)
