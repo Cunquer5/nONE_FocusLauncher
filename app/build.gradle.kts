@@ -2,7 +2,6 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
-    id("org.jetbrains.kotlin.android")
 }
 
 // Version constants
@@ -19,8 +18,8 @@ android {
         applicationId = "com.example.nonelauncher"
         minSdk = MIN_SDK
         targetSdk = TARGET_SDK
-        versionCode = 8
-        versionName = "1.4.0"
+        versionCode = 9
+        versionName = "1.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -47,9 +46,6 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
 }
 

@@ -6,7 +6,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 **nONE FocusLauncher** is a minimalist Android system launcher built with Kotlin and Jetpack Compose. It uses a productivity-focused design with features like grayscale focus mode, intention prompts, and a "1 Thing" task manager. The app targets Android API 28+ and uses modern Android architecture (MVVM).
 
-**Note**: As of v1.4.0, the Legacy UI mode has been removed. The launcher now uses a single Modern UI design with a swipe-down-to-search app discovery pattern.
+**Note**: As of v1.4.1, the launcher uses a single Modern UI design with a **Universal Search Bar** (Apps, Contacts, Files) using a swipe-down-to-search pattern.
 
 ## Build & Development Commands
 
@@ -61,8 +61,8 @@ The app follows a strict MVVM architecture:
 - **Repository Layer**: Data access abstraction
 - **Data Layer**: Room database + SharedPreferences for persistence
 
-### Single UI System (v1.4.0+)
-As of v1.4.0, the launcher uses a **single Modern UI** design. The Legacy UI mode has been removed.
+### Single UI System (v1.4.1+)
+As of v1.4.1, the launcher uses a **single Modern UI** design with a **Universal Search Bar**.
 
 **MODERN Mode** (`ui/modern/ModernHomeScreen.kt`):
    - Black glass morphism design with backdrop blur
@@ -154,7 +154,7 @@ Required permissions in AndroidManifest.xml:
 - `REQUEST_DELETE_PACKAGES`: App uninstall support
 
 ### Version Info
-- **Current Version**: 1.4.0 (versionCode 8)
+- **Current Version**: 1.4.1 (versionCode 9)
 - **Target SDK**: 35 (Android 15)
 - **Min SDK**: 28 (Android 9)
 - **Java Version**: 17

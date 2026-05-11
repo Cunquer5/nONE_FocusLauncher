@@ -9,6 +9,18 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.4.1",
+        versionCode = 9,
+        releaseDate = "2026-05-11",
+        features = listOf(
+            "Universal Search Bar: Search for apps, contacts, and files in one place",
+            "Categorized search results with distinct icons and metadata",
+            "Dynamic runtime permission handling for contacts and storage",
+            "Optimized search performance with debounce and parallel fetching",
+            "Gradle build system cleanup and AGP 10.0 readiness"
+        )
+    ),
+    VersionInfo(
         versionName = "1.4.0",
         versionCode = 8,
         releaseDate = "2026-05-11",

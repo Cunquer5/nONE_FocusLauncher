@@ -186,12 +186,20 @@ fun ModernHomeScreen(
         )
 
         // Search overlay — slides in from top on swipe-down
-        AppSearchOverlay(
+        UniversalSearchOverlay(
             visible = showSearch,
+            searchQuery = uiState.searchQuery,
+            onSearchQueryChange = { homeViewModel.onSearchQueryChanged(it) },
             apps = uiState.apps,
-            onDismiss = { showSearch = false },
+            contacts = uiState.contactResults,
+            files = uiState.fileResults,
+            onDismiss = { 
+                showSearch = false
+                homeViewModel.onSearchQueryChanged("")
+            },
             onAppClick = { app ->
                 showSearch = false
+                homeViewModel.onSearchQueryChanged("")
                 val isSystemOrEssential = app.isEssential ||
                     app.packageName == "com.android.settings" ||
                     app.packageName == context.packageName
@@ -201,6 +209,30 @@ fun ModernHomeScreen(
                 } else {
                     appToLaunch = app
                 }
+            },
+            onContactClick = { contact ->
+                showSearch = false
+                homeViewModel.onSearchQueryChanged("")
+                try {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        data = android.net.Uri.withAppendedPath(
+                            android.provider.ContactsContract.Contacts.CONTENT_URI,
+                            contact.id
+                        )
+                    }
+                    context.startActivity(intent)
+                } catch (e: Exception) { }
+            },
+            onFileClick = { file ->
+                showSearch = false
+                homeViewModel.onSearchQueryChanged("")
+                try {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        setDataAndType(file.uri, context.contentResolver.getType(file.uri))
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(intent)
+                } catch (e: Exception) { }
             },
             modifier = Modifier.fillMaxSize()
         )

@@ -33,8 +33,26 @@
 
 - `QUERY_ALL_PACKAGES`: Required to list installed applications.
 - `SET_WALLPAPER`: Allows you to change the wallpaper from within the launcher.
+- `READ_CONTACTS`: Required for searching and displaying system contacts in Universal Search.
+- `READ_EXTERNAL_STORAGE` / `READ_MEDIA_*`: Required for searching and accessing local files.
 
 ## Changelog
+
+### v1.4.1 - May 11, 2026
+
+#### Features
+- **Universal Search Bar**: Replaced the standard app drawer with a comprehensive search experience.
+  - **App Search**: Instantly find and launch installed applications.
+  - **Contact Search**: Search system contacts and view details or call directly from the search bar.
+  - **File Search**: Search for images, videos, audio, and documents across device storage.
+- **Categorized Results**: Search results are now grouped by type (Apps, Contacts, Files) with distinct icons and metadata.
+- **Dynamic Permission Handling**: Implemented proactive runtime permission requests for Contacts and Files when searching.
+
+#### Technical Improvements
+- **Optimized Data Fetching**: Added 300ms debounce and parallel coroutine execution for search queries to ensure zero-lag typing.
+- **Resilient Architecture**: Implemented robust error handling and `try-catch` safety in repositories to prevent crashes from system data access issues.
+- **Modern UI Integration**: Fully integrated the new search overlay with the existing glass morphism theme and backdrop blur effects.
+- **Gradle Cleanup**: Resolved plugin conflicts and removed deprecated build properties in preparation for AGP 10.0.
 
 ### v1.3.3 - February 7, 2026
 
