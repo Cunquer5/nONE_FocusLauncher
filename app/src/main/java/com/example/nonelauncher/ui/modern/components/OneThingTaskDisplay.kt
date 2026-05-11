@@ -3,6 +3,7 @@ package com.example.nonelauncher.ui.modern.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -106,6 +108,31 @@ fun OneThingTaskDisplay(
                                 }
                             }
                         }
+                        .pointerInput(isMainTaskCompleted) {
+                            var totalDrag = 0f
+                            detectHorizontalDragGestures(
+                                onDragEnd = { totalDrag = 0f },
+                                onDragCancel = { totalDrag = 0f },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    totalDrag += dragAmount
+                                    if (totalDrag > 100f && !isMainTaskCompleted) {
+                                        if (subTasks.isNotEmpty()) {
+                                            // Complete all subtasks
+                                            subTasks.forEach { subTask ->
+                                                if (!subTask.isCompleted) {
+                                                    onUpdateSubtask(subTask.id, true)
+                                                }
+                                            }
+                                        } else {
+                                            // No subtasks - mark as directly completed and trigger completion
+                                            isMainTaskDirectlyCompleted = true
+                                            onMainTaskCompleted()
+                                        }
+                                        totalDrag = 0f
+                                    }
+                                }
+                            )
+                        }
                 ) {
                     Box(
                         modifier = Modifier
@@ -180,6 +207,23 @@ fun OneThingTaskDisplay(
                             .clickable { 
                                 val newState = !isSubtaskCompleted
                                 onUpdateSubtask(subTask.id, newState)
+                            }
+                            .pointerInput(isSubtaskCompleted) {
+                                var totalDrag = 0f
+                                detectHorizontalDragGestures(
+                                    onDragEnd = { totalDrag = 0f },
+                                    onDragCancel = { totalDrag = 0f },
+                                    onHorizontalDrag = { change, dragAmount ->
+                                        totalDrag += dragAmount
+                                        if (totalDrag > 100f && !isSubtaskCompleted) {
+                                            onUpdateSubtask(subTask.id, true)
+                                            totalDrag = 0f
+                                        } else if (totalDrag < -100f && isSubtaskCompleted) {
+                                            onUpdateSubtask(subTask.id, false)
+                                            totalDrag = 0f
+                                        }
+                                    }
+                                )
                             }
                     ) {
                         Box(

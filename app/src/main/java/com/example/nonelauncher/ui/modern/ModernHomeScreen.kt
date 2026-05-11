@@ -117,7 +117,10 @@ fun ModernHomeScreen(
                     .padding(horizontal = 8.dp)
                     .fillMaxHeight(0.85f),
                 recentIntentions = uiState.recentIntentions,
-                onWallpaperClick = { showWallpaperDialog = true },
+                onWallpaperClick = {
+                    showWallpaperDialog = true
+                    showSettings = false
+                },
                 onHistoryClick = {
                     showHistory = true
                     showSettings = false
@@ -223,7 +226,10 @@ fun ModernHomeScreen(
         // Wallpaper dialog
         if (showWallpaperDialog) {
             WallpaperSelectionDialog(
-                onDismiss = { showWallpaperDialog = false },
+                onDismiss = {
+                    showWallpaperDialog = false
+                    showSettings = true
+                },
                 onOrangeColorSelected = {
                     try {
                         val wallpaperManager = android.app.WallpaperManager.getInstance(context)
