@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,12 +33,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.example.nonelauncher.data.repository.UserPreferencesRepository
+import com.example.nonelauncher.ui.components.FeedbackPromptDialog
+import com.example.nonelauncher.ui.components.WelcomeFirstLaunchDialog
+import com.example.nonelauncher.ui.components.openFeedbackWebsite
 import com.example.nonelauncher.ui.modern.ModernHomeScreen
 
 @Composable
 fun LauncherScreen() {
     val context = LocalContext.current
     var isDefaultLauncher by remember { mutableStateOf(isDefaultLauncher(context)) }
+    var showFirstLaunchWelcome by remember { mutableStateOf(false) }
+    var showFeedbackPrompt by remember { mutableStateOf(false) }
+    val prefsRepository = remember { UserPreferencesRepository(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val roleLauncher = rememberLauncherForActivityResult(
@@ -49,13 +57,50 @@ fun LauncherScreen() {
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME,
+                Lifecycle.Event.ON_RESUME -> {
+                    isDefaultLauncher = isDefaultLauncher(context)
+                    val prompts = prefsRepository.onAppResume(isDefaultLauncher(context))
+                    when {
+                        prompts.showFirstLaunchWelcome -> showFirstLaunchWelcome = true
+                        prompts.showFeedback -> showFeedbackPrompt = true
+                    }
+                }
                 Lifecycle.Event.ON_START -> isDefaultLauncher = isDefaultLauncher(context)
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    if (showFirstLaunchWelcome) {
+        WelcomeFirstLaunchDialog(
+            isDefaultLauncher = isDefaultLauncher,
+            onGetStarted = {
+                prefsRepository.markFirstLaunchWelcomeShown()
+                showFirstLaunchWelcome = false
+            },
+        )
+    }
+
+    if (showFeedbackPrompt) {
+        LaunchedEffect(Unit) {
+            prefsRepository.markFeedbackPromptShown()
+        }
+        FeedbackPromptDialog(
+            onVisitWebsite = {
+                openFeedbackWebsite(context)
+                showFeedbackPrompt = false
+            },
+            onLater = {
+                prefsRepository.snoozeFeedbackPrompt()
+                showFeedbackPrompt = false
+            },
+            onNoThanks = {
+                prefsRepository.permanentlyDisableFeedbackPrompt()
+                showFeedbackPrompt = false
+            },
+        )
     }
 
     if (!isDefaultLauncher) {
@@ -90,7 +135,9 @@ fun LauncherScreen() {
             }
         }
     } else {
-        ModernHomeScreen()
+        ModernHomeScreen(
+            onRequestFeedbackPrompt = { showFeedbackPrompt = true },
+        )
     }
 }
 

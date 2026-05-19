@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.data.model.parseOneThingTaskWithState
+import com.example.nonelauncher.data.repository.UserPreferencesRepository
 import com.example.nonelauncher.ui.home.HomeViewModel
 import com.example.nonelauncher.ui.modern.components.*
 import kotlinx.coroutines.launch
@@ -19,7 +20,8 @@ import dev.chrisbanes.haze.HazeState
 @Composable
 fun ModernHomeScreen(
     homeViewModel: HomeViewModel = viewModel(),
-    onOpenSettings: () -> Unit = {}
+    onOpenSettings: () -> Unit = {},
+    onRequestFeedbackPrompt: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val uiState by homeViewModel.uiState.collectAsState()
@@ -157,6 +159,9 @@ fun ModernHomeScreen(
                 } catch (e: Exception) { }
             },
             onOneThingClick = {
+                if (UserPreferencesRepository.FEEDBACK_TEST_TRIGGER_ON_ONE_THING) {
+                    onRequestFeedbackPrompt()
+                }
                 if (showOneThing) {
                     showOneThing = false
                     showInputCard = false
