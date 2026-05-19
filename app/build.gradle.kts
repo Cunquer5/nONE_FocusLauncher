@@ -18,8 +18,8 @@ android {
         applicationId = "com.example.nonelauncher"
         minSdk = MIN_SDK
         targetSdk = TARGET_SDK
-        versionCode = 9
-        versionName = "1.4.1"
+        versionCode = 10
+        versionName = "1.4.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

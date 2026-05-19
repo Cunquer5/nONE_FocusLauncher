@@ -9,6 +9,18 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.4.2",
+        versionCode = 10,
+        releaseDate = "2026-05-19",
+        features = listOf(
+            "first-launch welcome dialog for new installs with contextual default-home guidance",
+            "feedback prompt linking to none-launcher.vercel.app/dashboard (Visit Website, Later, No Thanks)",
+            "respectful feedback timing: after 5 home resumes or 7 days of use, 30-day snooze on dismiss",
+            "privacy-first prompts: local SharedPreferences only—no analytics SDK or visit tracking",
+            "welcome and feedback prompt coordination so only one dialog shows per resume"
+        )
+    ),
+    VersionInfo(
         versionName = "1.4.1",
         versionCode = 9,
         releaseDate = "2026-05-11",

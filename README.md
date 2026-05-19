@@ -8,6 +8,8 @@
 - **Focus Mode**: Grayscale filters for non-essential apps to reduce visual stimuli.
 - **Intention Setting**: Prompts you to state your purpose before launching distracting apps.
 - **Privacy First**: All data (intentions, settings) is stored locally. No intent access, no ads.
+- **First-Launch Welcome**: One-time onboarding dialog when you install and open the app.
+- **Feedback Prompts**: Optional, locally timed nudge to share feedback on the nONE dashboard—no analytics.
 
 ## Architecture
 
@@ -37,6 +39,20 @@
 - `READ_EXTERNAL_STORAGE` / `READ_MEDIA_*`: Required for searching and accessing local files.
 
 ## Changelog
+
+### v1.4.2 - May 19, 2026
+
+#### Features
+- **First-Launch Welcome**: One-time dialog on first open after install, with guidance to set nONE as default Home and an overview of swipe-down search.
+- **Feedback Prompt**: Respectful, optional prompt to visit the [feedback dashboard](https://none-launcher.vercel.app/dashboard).
+  - **Visit Website** opens the dashboard in the browser.
+  - **Later** snoozes the prompt for 30 days.
+  - **No Thanks** permanently disables feedback prompts.
+- Shown after **5** default-home resumes **or** **7 days** of use—not on first launch.
+
+#### Privacy
+- Prompt timing uses local `SharedPreferences` only (launch count, first-use date, last prompt time, opt-out flag).
+- No analytics SDKs and no tracking of whether the user visits the feedback site.
 
 ### v1.4.1 - May 11, 2026
 

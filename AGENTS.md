@@ -6,7 +6,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 **nONE FocusLauncher** is a minimalist Android system launcher built with Kotlin and Jetpack Compose. It uses a productivity-focused design with features like grayscale focus mode, intention prompts, and a "1 Thing" task manager. The app targets Android API 28+ and uses modern Android architecture (MVVM).
 
-**Note**: As of v1.4.1, the launcher uses a single Modern UI design with a **Universal Search Bar** (Apps, Contacts, Files) using a swipe-down-to-search pattern.
+**Note**: As of v1.4.1, the launcher uses a single Modern UI design with a **Universal Search Bar** (Apps, Contacts, Files) using a swipe-down-to-search pattern. v1.4.2 adds first-launch welcome and optional feedback prompts (local timing only).
 
 ## Build & Development Commands
 
@@ -81,7 +81,7 @@ As of v1.4.1, the launcher uses a **single Modern UI** design with a **Universal
 - Intention logging persists to Room database via `IntentionRepository`
 
 **Key Data Sources**:
-- `UserPreferencesRepository`: Focus mode, blur mode, grid columns, focus app packages, app order, one thing task, widget IDs
+- `UserPreferencesRepository`: Focus mode, blur mode, grid columns, focus app packages, app order, one thing task, widget IDs, first-launch welcome and feedback prompt flags
 - `AppRepository`: Installed apps with cached icon bitmaps (adaptive icons scaled to fill circles)
 - `IntentionRepository`: User intention logs stored in Room database
 - `UiModeManager`: UI mode persistence via DataStore
@@ -100,7 +100,7 @@ com.example.nonelauncher/
 │   ├── model/           # Data models (AppModel, VersionInfo)
 │   └── repository/      # Repository pattern implementations
 ├── ui/
-│   ├── components/      # Reusable UI components (AppIcon, IntentionDialog, GlassCard)
+│   ├── components/      # Reusable UI components (AppIcon, IntentionDialog, FeedbackPromptDialog, WelcomeFirstLaunchDialog, GlassCard)
 │   ├── home/            # HomeViewModel (Legacy mode placeholder - not used)
 │   ├── modern/          # Modern UI mode screen + glass morphism components
 │   ├── theme/           # Material 3 theming + glass morphism utilities
@@ -154,13 +154,19 @@ Required permissions in AndroidManifest.xml:
 - `REQUEST_DELETE_PACKAGES`: App uninstall support
 
 ### Version Info
-- **Current Version**: 1.4.1 (versionCode 9)
+- **Current Version**: 1.4.2 (versionCode 10)
 - **Target SDK**: 35 (Android 15)
 - **Min SDK**: 28 (Android 9)
 - **Java Version**: 17
 - **Kotlin Version**: 2.2.10
 
 ## Common Workflows
+
+### Onboarding & Feedback Prompts (v1.4.2+)
+- **Welcome**: `WelcomeFirstLaunchDialog` in `ui/components/`; shown once via `first_launch_welcome_shown` in `UserPreferencesRepository`.
+- **Feedback**: `FeedbackPromptDialog`; timing in `UserPreferencesRepository.onAppResume()` (5 launches / 7 days, 30-day snooze, permanent opt-out). URL: `FEEDBACK_WEBSITE_URL`.
+- Wired in `LauncherScreen.kt`; welcome takes priority over feedback on the same resume.
+- Set `FEEDBACK_TEST_TRIGGER_ON_ONE_THING = false` before release (when `true`, feedback shows on 1 Thing dock tap for QA).
 
 ### Adding a New Feature to Modern UI
 1. Check if feature requires new preference → add to `UserPreferencesRepository`
