@@ -33,3 +33,6 @@
 
 - `QUERY_ALL_PACKAGES`: Required to list installed applications.
 - `SET_WALLPAPER`: Allows you to change the wallpaper from within the launcher.
+
+
+##Website:https://none-launcher.vercel.app/
