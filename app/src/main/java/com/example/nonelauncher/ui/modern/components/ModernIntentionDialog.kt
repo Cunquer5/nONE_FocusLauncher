@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,9 +86,7 @@ fun ModernIntentionDialog(
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = """Intention for 
-opening 
-${app.label}?""",
+                                text = "Intention for opening ${app.label}?",
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Bold,
                                     lineHeight = 28.sp
@@ -143,7 +142,7 @@ ${app.label}?""",
                                     .height(56.dp)
                             )
 
-                            // Proceed Button
+                            // Proceed Button — dims while the note is empty; guard still blocks submit
                             com.example.nonelauncher.ui.components.GlassMorphismButton(
                                 onClick = {
                                     if (intentionText.isNotBlank()) onConfirm(intentionText)
@@ -154,6 +153,9 @@ ${app.label}?""",
                                 modifier = Modifier
                                     .weight(1.4f)
                                     .height(56.dp)
+                                    .graphicsLayer {
+                                        alpha = if (intentionText.isBlank()) 0.35f else 1f
+                                    }
                             )
                         }
                     }

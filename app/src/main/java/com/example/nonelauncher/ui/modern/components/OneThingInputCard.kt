@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.nonelauncher.data.model.OneThingTask
@@ -106,7 +107,7 @@ fun OneThingInputCard(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Simplified button with saturated orange color and 100% transparency
+            // Button dims until a main task is typed; guard still blocks submit
             GradientGlassMorphismButton(
                 onClick = {
                     if (mainTask.isNotBlank()) {
@@ -121,10 +122,13 @@ fun OneThingInputCard(
                 },
                 text = "Set Focus Task",
                 hazeState = hazeState,
-                glassAlpha = 1.0f,  // 100% transparency
+                glassAlpha = 1.0f,  // fully opaque glass
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
+                    .graphicsLayer {
+                        alpha = if (mainTask.isBlank()) 0.35f else 1f
+                    }
 
             )
         }

@@ -6,7 +6,7 @@ local.properties
 *.hprof
 .idea/
 .kotlin/
-
+.*
 #build artifact
 /app/release/
 *.apk

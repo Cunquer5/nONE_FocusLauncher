@@ -16,6 +16,7 @@ import com.example.nonelauncher.data.repository.IntentionRepository
 import com.example.nonelauncher.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
@@ -145,6 +147,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun resetOneThingTask() {
         prefsRepository.setOneThingTaskWithState(null)
     }
+
+    private var oneThingResetJob: Job? = null
+
+    /** Disposes the completed 1 Thing task after 5s; re-arming cancels the previous countdown. */
+    fun scheduleOneThingReset() {
+        oneThingResetJob?.cancel()
+        oneThingResetJob = viewModelScope.launch {
+            delay(5000L)
+            resetOneThingTask()
+        }
+    }
+
+    // --- Structure passthroughs ---
+    val structureSteps = prefsRepository.structureSteps
+    val structureIndex = prefsRepository.structureIndex
+
+    fun setStructureSteps(steps: List<String>) = prefsRepository.setStructureSteps(steps)
+    fun advanceStructureStep() = prefsRepository.advanceStructureStep()
+    fun rollStructureDay() = prefsRepository.rollStructureDay()
 
     fun onIntentionSubmitted(app: AppModel, intention: String, onComplete: () -> Unit) {
         viewModelScope.launch {

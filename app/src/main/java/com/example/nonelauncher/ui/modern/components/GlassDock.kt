@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,7 +82,7 @@ fun GlassDock(
                     label = "Phone",
                     isActive = activeItem == DockItemType.PHONE,
                     onClick = onPhoneClick,
-                    showLabel = false
+                    showLabel = true
                 )
 
                 // 1 Thing — centre focal item
@@ -90,6 +92,7 @@ fun GlassDock(
                         .clip(RoundedCornerShape(33.dp))
                         //.background(Color.Black.copy(alpha = 0.5f))
                         .clickable(onClick = onOneThingClick)
+                        .clearAndSetSemantics { contentDescription = "1 Thing" }
                         .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 16.dp else 0.dp),
                     contentAlignment = Alignment.Center
                 ) {

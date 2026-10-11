@@ -1,21 +1,43 @@
 package com.example.nonelauncher.ui.modern
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.data.model.parseOneThingTaskWithState
 import com.example.nonelauncher.data.repository.UserPreferencesRepository
 import com.example.nonelauncher.ui.home.HomeViewModel
 import com.example.nonelauncher.ui.modern.components.*
-import kotlinx.coroutines.launch
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeChild
 
 @Composable
 fun ModernHomeScreen(
@@ -26,18 +48,34 @@ fun ModernHomeScreen(
     val context = LocalContext.current
     val uiState by homeViewModel.uiState.collectAsState()
     val allIntentions by homeViewModel.allIntentions.collectAsState(initial = emptyList())
-    val scope = rememberCoroutineScope()
+    val structureSteps by homeViewModel.structureSteps.collectAsState()
+    val structureIndex by homeViewModel.structureIndex.collectAsState()
     val hazeState = remember { HazeState() }
+
+    // Wake-start: first home resume of a new day resets the structure flow to step 1
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) homeViewModel.rollStructureDay()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     var showSearch by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
     var showOneThing by remember { mutableStateOf(false) }
     var showWallpaperDialog by remember { mutableStateOf(false) }
+    var showStructure by remember { mutableStateOf(false) }
     var appToLaunch by remember { mutableStateOf<AppModel?>(null) }
 
     var showInputCard by remember { mutableStateOf(false) }
     var showTaskDisplay by remember { mutableStateOf(false) }
+    var dockVisible by remember { mutableStateOf(false) }
+    val anySheet = showSettings || showOneThing || showHistory || showStructure
+    // Sheets anchor above the dock, so an open sheet forces the dock shown
+    val dockShown = dockVisible || anySheet
 
     val activeTab = remember(showSettings, showOneThing) {
         when {
@@ -62,27 +100,133 @@ fun ModernHomeScreen(
                 homeViewModel.updateSubtaskState(subTask.id, true)
             }
         }
-        scope.launch {
-            kotlinx.coroutines.delay(5000L)
-            homeViewModel.resetOneThingTask()
-        }
+        // 5s disposal lives in the ViewModel: survives navigation, single source, re-armed on re-complete
+        homeViewModel.scheduleOneThingReset()
     }
 
     val oneThingTask = uiState.oneThingTaskWithState
 
+    // Back closes the open surface (launcher convention: bare home still swallows back)
+    BackHandler(enabled = showSearch || showOneThing || showSettings || showHistory || showStructure || dockVisible) {
+        when {
+            showSearch -> {
+                showSearch = false
+                homeViewModel.onSearchQueryChanged("")
+            }
+            showHistory -> {
+                showHistory = false
+                showSettings = true
+            }
+            showStructure -> showStructure = false
+            showOneThing -> {
+                showOneThing = false
+                showInputCard = false
+                showTaskDisplay = false
+            }
+            else -> {
+                showSettings = false
+                dockVisible = false
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Swipe down anywhere on the home screen to open search
-            .pointerInput(showSearch, showSettings, showOneThing) {
-                detectVerticalDragGestures { _, dragAmount ->
-                    // dragAmount > 0 means finger moving downward
-                    if (dragAmount > 20f && !showSearch && !showSettings && !showOneThing) {
-                        showSearch = true
+            .imePadding()
+            // Tap empty home hides the dock again
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { dockVisible = false }
+            // Swipe up anywhere reveals the hidden dock
+            .pointerInput(showSearch, anySheet, dockShown) {
+                var up = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { up = 0f },
+                    onDragEnd = { up = 0f },
+                    onDragCancel = { up = 0f },
+                    onVerticalDrag = { _, dragAmount ->
+                        // dragAmount < 0 = finger moving upward; require a deliberate cumulative pull
+                        if (dragAmount < 0) up += -dragAmount
+                        if (up > 150f && !showSearch && !dockShown) {
+                            dockVisible = true
+                            up = 0f
+                        }
                     }
-                }
+                )
+            }
+            // Swipe from the right side opens search, which slides in from the right
+            .pointerInput(showSearch, anySheet) {
+                var left = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { left = 0f },
+                    onDragEnd = { left = 0f },
+                    onDragCancel = { left = 0f },
+                    onHorizontalDrag = { _, dragAmount ->
+                        // dragAmount < 0 = finger moving leftward
+                        if (dragAmount < 0) left += -dragAmount
+                        if (left > 150f && !showSearch && !anySheet) {
+                            showSearch = true
+                            left = 0f
+                        }
+                    }
+                )
             }
     ) {
+
+        // Right-edge handle — teaches/taps the swipe-from-right search gesture
+        if (!showSearch && !anySheet) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 4.dp)
+                    .width(20.dp)
+                    .height(96.dp)
+                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
+                    .background(Color.White.copy(alpha = 0.3f))
+                    .clickable { showSearch = true }
+                    .clearAndSetSemantics { contentDescription = "Search apps, contacts, files" }
+            )
+        }
+
+        // Current structure step — tap to advance through the day's flow
+        if (structureSteps.isNotEmpty() &&
+            !showSearch && !showSettings && !showHistory && !showOneThing && !showStructure
+        ) {
+            val idx = structureIndex.coerceIn(0, structureSteps.lastIndex)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .hazeChild(state = hazeState, blurRadius = 14.dp)
+                    .background(Color(0xFF0F0F0F).copy(alpha = 0.55f))
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                    .clickable { homeViewModel.advanceStructureStep() }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = "Structure step ${idx + 1} of ${structureSteps.size}: ${structureSteps[idx]}. Tap to advance."
+                    }
+            ) {
+                Text(
+                    text = structureSteps[idx],
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 240.dp)
+                )
+                Text(
+                    text = " ${idx + 1}/${structureSteps.size}",
+                    color = Color.White.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(start = 6.dp)
+                )
+            }
+        }
 
         // 1 Thing task display
         if (showOneThing && showTaskDisplay && uiState.oneThingTaskWithState != null) {
@@ -94,7 +238,8 @@ fun ModernHomeScreen(
                 },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 40.dp, bottom = 120.dp)
+                    .statusBarsPadding()
+                    .padding(top = 12.dp, bottom = 120.dp)
                     .padding(horizontal = 16.dp)
             )
         }
@@ -147,11 +292,73 @@ fun ModernHomeScreen(
             )
         }
 
-        // Dock — 3 items only
-        GlassDock(
+        // Structure editor sheet
+        if (showStructure) {
+            StructureSheet(
+                steps = structureSteps,
+                onDismiss = { showStructure = false },
+                onSave = { steps ->
+                    homeViewModel.setStructureSteps(steps)
+                    showStructure = false
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 120.dp)
+                    .padding(horizontal = 8.dp)
+                    .fillMaxHeight(0.8f)
+            )
+        }
+
+        // Structure access rail — semi-transparent minimal button on the left edge
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 4.dp)
+                .width(20.dp)
+                .height(96.dp)
+                .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
+                .background(Color.White.copy(alpha = 0.3f))
+                .clickable {
+                    if (showStructure) {
+                        showStructure = false
+                    } else {
+                        showStructure = true
+                        showSettings = false
+                        showHistory = false
+                        showOneThing = false
+                        showSearch = false
+                        homeViewModel.onSearchQueryChanged("")
+                    }
+                }
+                .clearAndSetSemantics { contentDescription = "Structure" }
+        )
+
+        // Bottom handle — tap to reveal the dock (swipe up anywhere also works)
+        if (!dockShown && !showSearch) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 28.dp)
+                    .size(width = 44.dp, height = 5.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Color.White.copy(alpha = 0.45f))
+                    .clickable { dockVisible = true }
+                    .clearAndSetSemantics { contentDescription = "Show dock" }
+            )
+        }
+
+        // Dock — hidden until swipe-up, bottom handle, or an open sheet reveals it
+        AnimatedVisibility(
+            visible = dockShown,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            GlassDock(
             hazeState = hazeState,
             activeItem = activeTab,
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier,
             onPhoneClick = {
                 try {
                     val intent = android.content.Intent(android.content.Intent.ACTION_DIAL)
@@ -189,8 +396,9 @@ fun ModernHomeScreen(
                 }
             }
         )
+        }
 
-        // Search overlay — slides in from top on swipe-down
+        // Search overlay — slides in from the right on swipe-from-right
         UniversalSearchOverlay(
             visible = showSearch,
             searchQuery = uiState.searchQuery,

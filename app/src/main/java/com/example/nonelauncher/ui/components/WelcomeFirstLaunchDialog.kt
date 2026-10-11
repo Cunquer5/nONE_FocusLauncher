@@ -35,9 +35,9 @@ fun WelcomeFirstLaunchDialog(
                 )
                 Text(
                     text = if (isDefaultLauncher) {
-                        "A minimalist home focused on calm and intention. Swipe down to search apps, contacts, and files."
+                        "A minimalist home focused on calm and intention. Swipe in from the right to search apps, contacts, and files. Swipe up to reveal the dock."
                     } else {
-                        "Thanks for installing. Set nONE as your default Home app to use the launcher, then swipe down to search apps, contacts, and files."
+                        "Thanks for installing. Set nONE as your default Home app to use the launcher, then swipe in from the right to search apps, contacts, and files."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                 )

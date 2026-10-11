@@ -39,15 +39,13 @@ fun IntentionHistorySheet(
 ) {
     val hazeState = HazeGlassMorphism.rememberHazeState()
     val groupedIntentions = remember(intentions) {
+        // Sort groups by their newest entry, descending: comparator-equal day labels can no longer
+        // collide in a SortedMap and silently drop older days (the old toSortedMap bug).
         intentions.groupBy { intention ->
             getRelativeDate(Date(intention.timestamp))
-        }.toSortedMap(compareBy { 
-            when (it) {
-                "Today" -> 0
-                "Yesterday" -> 1
-                else -> 2
-            }
-        })
+        }.toList().sortedByDescending { (_, dayIntentions) ->
+            dayIntentions.maxOf { it.timestamp }
+        }
     }
 
     GlassContainer(

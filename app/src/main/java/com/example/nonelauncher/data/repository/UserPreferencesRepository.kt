@@ -30,6 +30,44 @@ class UserPreferencesRepository(context: Context) {
         _oneThingTaskWithState.value = task
     }
 
+    // --- Structure: ordered day flow, one step per line in prefs ---
+    private val _structureSteps = MutableStateFlow(
+        prefs.getString(KEY_STRUCTURE_STEPS, null)?.lines()?.filter { it.isNotBlank() } ?: emptyList()
+    )
+    val structureSteps: StateFlow<List<String>> = _structureSteps.asStateFlow()
+
+    private val _structureIndex = MutableStateFlow(prefs.getInt(KEY_STRUCTURE_INDEX, 0))
+    val structureIndex: StateFlow<Int> = _structureIndex.asStateFlow()
+
+    fun setStructureSteps(steps: List<String>) {
+        _structureSteps.value = steps
+        _structureIndex.value = 0
+        prefs.edit()
+            .putString(KEY_STRUCTURE_STEPS, steps.joinToString("\n"))
+            .putInt(KEY_STRUCTURE_INDEX, 0)
+            .putString(KEY_STRUCTURE_DAY, java.time.LocalDate.now().toString())
+            .apply()
+    }
+
+    fun advanceStructureStep() {
+        val steps = _structureSteps.value
+        if (steps.isEmpty()) return
+        val next = (_structureIndex.value + 1).coerceAtMost(steps.lastIndex)
+        if (next != _structureIndex.value) {
+            _structureIndex.value = next
+            prefs.edit().putInt(KEY_STRUCTURE_INDEX, next).apply()
+        }
+    }
+
+    /** Wake-start: reset the flow on the first launcher resume of a new date. */
+    fun rollStructureDay() {
+        val today = java.time.LocalDate.now().toString()
+        if (prefs.getString(KEY_STRUCTURE_DAY, null) != today) {
+            _structureIndex.value = 0
+            prefs.edit().putString(KEY_STRUCTURE_DAY, today).putInt(KEY_STRUCTURE_INDEX, 0).apply()
+        }
+    }
+
     private fun serializeOneThingTask(task: OneThingTask): String {
         return "${task.mainTask}|${
             task.subTasks.joinToString(";") {
@@ -138,6 +176,10 @@ class UserPreferencesRepository(context: Context) {
         private const val PREFS_NAME = "focus_prefs"
         private const val KEY_ONE_THING_TASK = "one_thing_task"
         private const val KEY_ONE_THING_TASK_STATE = "one_thing_task_with_state"
+
+        private const val KEY_STRUCTURE_STEPS = "structure_steps"
+        private const val KEY_STRUCTURE_INDEX = "structure_index"
+        private const val KEY_STRUCTURE_DAY = "structure_day"
 
         private const val KEY_APP_LAUNCH_COUNT = "app_launch_count"
         private const val KEY_FIRST_LAUNCH_WELCOME_SHOWN = "first_launch_welcome_shown"

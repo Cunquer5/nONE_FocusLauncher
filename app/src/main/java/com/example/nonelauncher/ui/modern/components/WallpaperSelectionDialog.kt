@@ -4,18 +4,20 @@ import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.os.Build
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +26,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism
 import com.example.nonelauncher.ui.components.GlassMorphismButton
+import androidx.core.graphics.drawable.toBitmap
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -93,7 +96,6 @@ fun WallpaperSelectionDialog(
                     title = "Default Saturated Orange",
                     description = "Use the launcher's signature orange color",
                     backgroundColor = OrangePrimary,
-                    isSelected = false,
                     onClick = {
                         onOrangeColorSelected()
                         onDismiss()
@@ -113,7 +115,6 @@ fun WallpaperSelectionDialog(
                     description = "Select from your device storage",
                     backgroundColor = Color(0xFF2A2A2A),
                     preview = currentWallpaper,
-                    isSelected = false,
                     onClick = {
                         onCustomWallpaperClick()
                         onDismiss()
@@ -143,7 +144,6 @@ private fun WallpaperOption(
     title: String,
     description: String,
     backgroundColor: Color,
-    isSelected: Boolean = false,
     preview: android.graphics.drawable.Drawable? = null,
     onClick: () -> Unit,
     hazeState: HazeState
@@ -185,20 +185,19 @@ private fun WallpaperOption(
                 )
             }
 
-            // Selection Indicator
+            // Preview swatch: solid fill for the orange option, the live wallpaper for custom
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) OrangePrimary else Color.White.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(backgroundColor)
             ) {
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Selected",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                if (preview != null) {
+                    Image(
+                        bitmap = remember(preview) { preview.toBitmap(128, 128).asImageBitmap() },
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 }
             }

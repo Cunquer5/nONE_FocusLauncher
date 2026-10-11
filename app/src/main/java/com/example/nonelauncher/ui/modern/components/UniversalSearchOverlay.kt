@@ -3,8 +3,8 @@ package com.example.nonelauncher.ui.modern.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,7 +45,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 
 /**
- * Full-screen search overlay, shown when the user swipes down on the home screen.
+ * Full-screen search overlay, shown when the user swipes in from the right edge.
  * Automatically focuses the search field when visible.
  */
 @Composable
@@ -131,8 +131,8 @@ fun UniversalSearchOverlay(
 
     AnimatedVisibility(
         visible = visible,
-        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
         modifier = modifier
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -143,12 +143,13 @@ fun UniversalSearchOverlay(
                     .haze(state = hazeState, backgroundColor = Color.Transparent)
             )
 
-            // Glass surface
+            // Glass surface — taps on empty area dismiss (also block taps reaching the dock underneath)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .hazeChild(state = hazeState, blurRadius = 28.dp)
                     .background(Color.Black.copy(alpha = 0.75f))
+                    .clickable(onClick = onDismiss)
             ) {
                 Column(
                     modifier = Modifier
@@ -232,7 +233,7 @@ fun UniversalSearchOverlay(
                         ) {
                             Text(
                                 text = "Type to search",
-                                color = Color.White.copy(alpha = 0.35f),
+                                color = Color.White.copy(alpha = 0.6f),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
@@ -287,7 +288,7 @@ fun UniversalSearchOverlay(
                                     ) {
                                         Text(
                                             text = "No results found",
-                                            color = Color.White.copy(alpha = 0.45f),
+                                            color = Color.White.copy(alpha = 0.65f),
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                     }

@@ -102,9 +102,8 @@ fun OneThingTaskDisplay(
                                         }
                                     }
                                 } else {
-                                    // No subtasks - mark as directly completed and trigger completion
+                                    // No subtasks - LaunchedEffect on isMainTaskCompleted fires the single completion callback
                                     isMainTaskDirectlyCompleted = true
-                                    onMainTaskCompleted()
                                 }
                             }
                         }
@@ -124,9 +123,8 @@ fun OneThingTaskDisplay(
                                                 }
                                             }
                                         } else {
-                                            // No subtasks - mark as directly completed and trigger completion
+                                            // No subtasks - LaunchedEffect on isMainTaskCompleted fires the single completion callback
                                             isMainTaskDirectlyCompleted = true
-                                            onMainTaskCompleted()
                                         }
                                         totalDrag = 0f
                                     }
