@@ -30,6 +30,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            // Without a signing config AGP creates no installRelease task at all.
+            // Debug-signed: fine for sideloading — swap in a real keystore before publishing.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

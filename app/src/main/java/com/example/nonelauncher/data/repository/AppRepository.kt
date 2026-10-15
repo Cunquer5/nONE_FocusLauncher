@@ -2,6 +2,7 @@ package com.example.nonelauncher.data.repository
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
@@ -15,6 +16,8 @@ import kotlinx.coroutines.withContext
 
 class AppRepository(private val context: Context) {
 
+    // ponytail: cleared only on process start, so an uninstalled app's icon lingers until restart.
+    // Upgrade path: PACKAGE_REMOVED receiver, or a refresh-on-resume hook.
     private var cachedApps: List<AppModel>? = null
 
     suspend fun getInstalledApps(): List<AppModel> = withContext(Dispatchers.IO) {
@@ -43,7 +46,8 @@ class AppRepository(private val context: Context) {
                 packageName = activityInfo.packageName,
                 label = label,
                 icon = imageBitmap,
-                isEssential = isEssentialApp(activityInfo.packageName, label)
+                isEssential = isEssentialApp(activityInfo.packageName, label),
+                isUninstallable = activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0
             )
         }.sortedBy { it.label.lowercase() }
 
@@ -52,11 +56,26 @@ class AppRepository(private val context: Context) {
     }
 
     private fun isEssentialApp(packageName: String, label: String): Boolean {
-        val essentialKeywords = listOf("bank", "pay", "card", "finance", "wallet", "wallet", "contacts", "phone", "call", "dialer", "message", "sms")
+        val essentialKeywords = listOf(
+            // Calls, contacts, messaging
+            "phone", "call", "dialer", "contacts", "message", "sms", "whatsapp",
+            // Payments / banking
+            "pay", "paytm", "phonepe", "upi", "bank", "wallet", "card", "finance",
+            // Navigation
+            "maps",
+            // Ticketing
+            "ticket", "irctc", "bookmyshow", "redbus", "rail",
+            // Time
+            "clock", "alarm",
+            // Documents
+            "pdf",
+            "note", "indicator"
+        )
         val essentialPackagePatterns = listOf(
             "com.android.dialer", "com.google.android.dialer",
             "com.android.contacts", "com.google.android.contacts",
-            "com.android.messaging", "com.google.android.apps.messaging"
+            "com.android.messaging", "com.google.android.apps.messaging",
+            "com.whatsapp", "com.google.android.apps.maps"
         )
 
         val normalizedLabel = label.lowercase()

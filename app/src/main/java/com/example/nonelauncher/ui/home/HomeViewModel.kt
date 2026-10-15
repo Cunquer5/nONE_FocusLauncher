@@ -14,6 +14,7 @@ import com.example.nonelauncher.data.repository.ContactRepository
 import com.example.nonelauncher.data.repository.FileRepository
 import com.example.nonelauncher.data.repository.IntentionRepository
 import com.example.nonelauncher.data.repository.UserPreferencesRepository
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -45,33 +46,53 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _searchQuery = MutableStateFlow("")
     private val _contactResults = MutableStateFlow<List<ContactModel>>(emptyList())
     private val _fileResults = MutableStateFlow<List<FileModel>>(emptyList())
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching
 
-    @Suppress("UNCHECKED_CAST")
+    // Search state stays off uiState: a keystroke that republishes the whole HomeUiState
+    // recomposes the entire home screen underneath the blurred overlay.
+    val searchQuery: StateFlow<String> = _searchQuery
+    val contactResults: StateFlow<List<ContactModel>> = _contactResults
+    val fileResults: StateFlow<List<FileModel>> = _fileResults
+
+    // Top launched packages, most-first — powers the pre-query Frequent grid
+    val frequentPackages: StateFlow<List<String>> = prefsRepository.appLaunchCounts
+        .map { counts -> counts.entries.sortedByDescending { it.value }.take(10).map { it.key } }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun recordAppLaunch(packageName: String) = prefsRepository.recordAppLaunch(packageName)
+
+    /** First toggle adopts the auto-detected shelf as the starting point, so removals work from then on. */
+    fun togglePinnedApp(app: AppModel) {
+        val shelf = prefsRepository.pinnedAppPackages.value
+            ?: _installedApps.value.filter { it.isEssential }.map { it.packageName }.toSet()
+        prefsRepository.setPinnedAppPackages(
+            if (app.packageName in shelf) shelf - app.packageName else shelf + app.packageName
+        )
+    }
+
+    // Essentials shelf = the user's picks, or the auto-detected essentials until they pick.
+    // Separate from isEssential, which still drives grayscale and the intention prompt.
+    private val appsWithPins = combine(_installedApps, prefsRepository.pinnedAppPackages) { apps, picked ->
+        val shelf = picked ?: apps.filter { it.isEssential }.map { it.packageName }.toSet()
+        apps.map { it.copy(isPinned = it.packageName in shelf) }
+    }
+
     val uiState: StateFlow<HomeUiState> = combine(
-        _installedApps,
+        appsWithPins,
         _recentIntentions,
         prefsRepository.oneThingTask,
-        prefsRepository.oneThingTaskWithState,
-        _searchQuery,
-        _contactResults,
-        _fileResults
-    ) { args ->
-        val apps = args[0] as List<AppModel>
-        val intentions = args[1] as List<Intention>
-        val oneThing = args[2] as String?
-        val oneThingWithState = args[3] as OneThingTask?
-        val query = args[4] as String
-        val contacts = args[5] as List<ContactModel>
-        val files = args[6] as List<FileModel>
-
+        prefsRepository.oneThingTaskWithState
+    ) { apps, intentions, oneThing, oneThingWithState ->
         HomeUiState(
-            apps = apps.sortedBy { it.label.lowercase() },
+            apps = apps,
             recentIntentions = intentions,
             oneThingTask = oneThing,
-            oneThingTaskWithState = oneThingWithState,
-            searchQuery = query,
-            contactResults = contacts,
-            fileResults = files
+            oneThingTaskWithState = oneThingWithState
         )
     }
     .flowOn(Dispatchers.Default)
@@ -100,33 +121,60 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 .debounce(300)
                 .distinctUntilChanged()
                 .collect { query ->
-                    if (query.isBlank()) {
+                    val q = query.trim()
+                    if (q.isEmpty()) {
                         _contactResults.value = emptyList()
                         _fileResults.value = emptyList()
+                        _isSearching.value = false
                     } else {
-                        // Use separate launches with try-catch to prevent one failure from stopping the observer
-                        launch {
-                            try {
-                                _contactResults.value = contactRepository.searchContacts(query)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                _contactResults.value = emptyList()
-                            }
-                        }
-                        launch {
-                            try {
-                                _fileResults.value = fileRepository.searchFiles(query)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                _fileResults.value = emptyList()
-                            }
-                        }
+                        runRemoteSearch(q)
                     }
                 }
         }
     }
 
+    // coroutineScope joins both so isSearching flips only when the query is done;
+    // the stale guard drops results whose query changed while they were running
+    private suspend fun runRemoteSearch(q: String) {
+        _isSearching.value = true
+        try {
+            coroutineScope {
+                launch {
+                    try {
+                        val results = contactRepository.searchContacts(q)
+                        if (_searchQuery.value.trim() == q) _contactResults.value = results
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        if (_searchQuery.value.trim() == q) _contactResults.value = emptyList()
+                    }
+                }
+                launch {
+                    try {
+                        val results = fileRepository.searchFiles(q)
+                        if (_searchQuery.value.trim() == q) _fileResults.value = results
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        if (_searchQuery.value.trim() == q) _fileResults.value = emptyList()
+                    }
+                }
+            }
+        } finally {
+            _isSearching.value = false
+        }
+    }
+
+    /** Re-run the current query — a permission grant changes what is searchable mid-session. */
+    fun refreshSearch() {
+        val q = _searchQuery.value.trim()
+        if (q.isNotEmpty()) viewModelScope.launch { runRemoteSearch(q) }
+    }
+
     fun onSearchQueryChanged(query: String) {
+        // Clear immediately so the previous query's results never linger under the new one
+        if (query != _searchQuery.value) {
+            _contactResults.value = emptyList()
+            _fileResults.value = emptyList()
+        }
         _searchQuery.value = query
     }
 
@@ -163,7 +211,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val structureSteps = prefsRepository.structureSteps
     val structureIndex = prefsRepository.structureIndex
 
+    // --- Focus mode passthrough ---
+    val focusModeEnabled = prefsRepository.focusModeEnabled
+    fun setFocusModeEnabled(enabled: Boolean) = prefsRepository.setFocusModeEnabled(enabled)
+
     fun setStructureSteps(steps: List<String>) = prefsRepository.setStructureSteps(steps)
+    fun moveStructureStep(delta: Int) = prefsRepository.moveStructureStep(delta)
     fun advanceStructureStep() = prefsRepository.advanceStructureStep()
     fun rollStructureDay() = prefsRepository.rollStructureDay()
 
@@ -179,8 +232,5 @@ data class HomeUiState(
     val apps: List<AppModel> = emptyList(),
     val recentIntentions: List<Intention> = emptyList(),
     val oneThingTask: String? = null,
-    val oneThingTaskWithState: OneThingTask? = null,
-    val searchQuery: String = "",
-    val contactResults: List<ContactModel> = emptyList(),
-    val fileResults: List<FileModel> = emptyList()
+    val oneThingTaskWithState: OneThingTask? = null
 )

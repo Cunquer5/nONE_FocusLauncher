@@ -30,6 +30,53 @@ class UserPreferencesRepository(context: Context) {
         _oneThingTaskWithState.value = task
     }
 
+    // --- Focus mode: grayscale non-essential app icons ---
+    private val _focusModeEnabled = MutableStateFlow(prefs.getBoolean(KEY_FOCUS_MODE_ENABLED, false))
+    val focusModeEnabled: StateFlow<Boolean> = _focusModeEnabled.asStateFlow()
+
+    fun setFocusModeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FOCUS_MODE_ENABLED, enabled).apply()
+        _focusModeEnabled.value = enabled
+    }
+
+    // --- Essentials shelf: user-picked packages. null = never chosen (auto-detected essentials apply) ---
+    private val _pinnedAppPackages = MutableStateFlow(loadPinnedAppPackages())
+    val pinnedAppPackages: StateFlow<Set<String>?> = _pinnedAppPackages.asStateFlow()
+
+    fun setPinnedAppPackages(packages: Set<String>) {
+        prefs.edit().putString(KEY_PINNED_APPS, packages.joinToString(",")).apply()
+        _pinnedAppPackages.value = packages
+    }
+
+    private fun loadPinnedAppPackages(): Set<String>? =
+        prefs.getString(KEY_PINNED_APPS, null)
+            ?.split(",")
+            ?.filter { it.isNotBlank() }
+            ?.toSet()
+
+    // --- App launch counts: power the pre-query Frequent grid (pkg:count, comma-separated) ---
+    private val _appLaunchCounts = MutableStateFlow(loadAppLaunchCounts())
+    val appLaunchCounts: StateFlow<Map<String, Int>> = _appLaunchCounts.asStateFlow()
+
+    fun recordAppLaunch(packageName: String) {
+        val counts = HashMap(_appLaunchCounts.value)
+        counts[packageName] = (counts[packageName] ?: 0) + 1
+        prefs.edit()
+            .putString(KEY_APP_LAUNCH_COUNTS, counts.entries.joinToString(",") { "${it.key}:${it.value}" })
+            .apply()
+        _appLaunchCounts.value = counts
+    }
+
+    private fun loadAppLaunchCounts(): Map<String, Int> =
+        prefs.getString(KEY_APP_LAUNCH_COUNTS, null)
+            ?.split(",")
+            ?.mapNotNull { entry ->
+                val parts = entry.split(":")
+                if (parts.size == 2) parts[0].trim() to (parts[1].trim().toIntOrNull() ?: 0) else null
+            }
+            ?.toMap()
+            ?: emptyMap()
+
     // --- Structure: ordered day flow, one step per line in prefs ---
     private val _structureSteps = MutableStateFlow(
         prefs.getString(KEY_STRUCTURE_STEPS, null)?.lines()?.filter { it.isNotBlank() } ?: emptyList()
@@ -49,23 +96,27 @@ class UserPreferencesRepository(context: Context) {
             .apply()
     }
 
-    fun advanceStructureStep() {
+    fun moveStructureStep(delta: Int) {
         val steps = _structureSteps.value
         if (steps.isEmpty()) return
-        val next = (_structureIndex.value + 1).coerceAtMost(steps.lastIndex)
+        val next = (_structureIndex.value + delta).coerceIn(0, steps.lastIndex)
         if (next != _structureIndex.value) {
             _structureIndex.value = next
             prefs.edit().putInt(KEY_STRUCTURE_INDEX, next).apply()
         }
     }
 
-    /** Wake-start: reset the flow on the first launcher resume of a new date. */
-    fun rollStructureDay() {
+    fun advanceStructureStep() = moveStructureStep(1)
+
+    /** Wake-start: reset the flow on the first launcher resume of a new date. True = a fresh day just rolled. */
+    fun rollStructureDay(): Boolean {
         val today = java.time.LocalDate.now().toString()
         if (prefs.getString(KEY_STRUCTURE_DAY, null) != today) {
             _structureIndex.value = 0
             prefs.edit().putString(KEY_STRUCTURE_DAY, today).putInt(KEY_STRUCTURE_INDEX, 0).apply()
+            return true
         }
+        return false
     }
 
     private fun serializeOneThingTask(task: OneThingTask): String {
@@ -178,6 +229,9 @@ class UserPreferencesRepository(context: Context) {
         private const val KEY_ONE_THING_TASK_STATE = "one_thing_task_with_state"
 
         private const val KEY_STRUCTURE_STEPS = "structure_steps"
+        private const val KEY_FOCUS_MODE_ENABLED = "focus_mode_enabled"
+        private const val KEY_APP_LAUNCH_COUNTS = "app_launch_counts"
+        private const val KEY_PINNED_APPS = "pinned_apps"
         private const val KEY_STRUCTURE_INDEX = "structure_index"
         private const val KEY_STRUCTURE_DAY = "structure_day"
 

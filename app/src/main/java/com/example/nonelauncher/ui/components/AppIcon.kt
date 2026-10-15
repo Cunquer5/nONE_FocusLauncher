@@ -7,13 +7,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -28,6 +28,7 @@ import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism.glassSurfaceLayer
 import com.example.nonelauncher.ui.theme.SquircleShapes
+import com.example.nonelauncher.ui.theme.glassPress
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
@@ -43,9 +44,12 @@ fun AppIcon(
     onUninstall: () -> Unit = {},
     onAppInfo: () -> Unit = {},
     isUninstallable: Boolean = false,
+    onTogglePinned: () -> Unit,
     hazeState: HazeState? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val view = LocalView.current
     
     // Pre-calculate sizes outside of composition to avoid recompositions
     val iconSize = remember(gridColumns) {
@@ -98,9 +102,14 @@ fun AppIcon(
         modifier = Modifier
             .clip(iconShape)
             .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = rememberRipple(bounded = true, color = Color.Gray),
-                onClick = { onAppClick(app) },
+                interactionSource = interactionSource,
+                // Gray ripple on black glass was invisible AND occluded by the icon well;
+                // feedback now rides the icon Box itself via glassPress + haptic
+                indication = null,
+                onClick = {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    onAppClick(app)
+                },
                 onLongClick = { showMenu = true }
             )
             .padding(4.dp)
@@ -116,6 +125,18 @@ fun AppIcon(
                     onClick = { 
                         showMenu = false
                         onAppInfo() 
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (app.isPinned) "Remove from Essentials" else "Add to Essentials",
+                            color = Color.White
+                        )
+                    },
+                    onClick = {
+                        showMenu = false
+                        onTogglePinned()
                     }
                 )
                 if (isUninstallable) {
@@ -146,6 +167,7 @@ fun AppIcon(
                         color = Color.White.copy(alpha = 0.1f),
                         shape = iconShape
                     )
+                    .glassPress(interactionSource, iconShape)
             ) {
                 Image(
                     bitmap = app.icon,
@@ -167,6 +189,7 @@ fun AppIcon(
                     .size(iconSize)
                     .clip(iconShape)
                     .background(Color.Black.copy(alpha = 0.3f))
+                    .glassPress(interactionSource, iconShape)
             ) {
                 Image(
                     bitmap = app.icon,
