@@ -1,30 +1,33 @@
 package com.example.nonelauncher.ui.modern.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.nonelauncher.data.model.AppModel
-import android.graphics.Color as AndroidColor
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism.glassBackground
 import com.example.nonelauncher.ui.theme.HazeGlassMorphism.hazeBackground
-import dev.chrisbanes.haze.HazeState
+import com.example.nonelauncher.ui.theme.SquircleShapes
 
 @Composable
 fun ModernIntentionDialog(
@@ -37,9 +40,15 @@ fun ModernIntentionDialog(
     val hazeState = HazeGlassMorphism.rememberHazeState()
 
     // Using WallpaperColors.primaryColor and converting to Compose Color
-    val primaryColor = wallpaperColors?.primaryColor?.toArgb()?.let { 
+    val primaryColor = wallpaperColors?.primaryColor?.toArgb()?.let {
         androidx.compose.ui.graphics.Color(it)
     } ?: OrangePrimary
+
+    // Gentle arrival only — the layout below is the incumbent one, untouched
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val appear by animateFloatAsState(if (shown) 1f else 0f, tween(200), label = "gateFade")
+    val risePx = with(LocalDensity.current) { 24.dp.toPx() }
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -49,6 +58,10 @@ fun ModernIntentionDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 6.dp)
+                    .graphicsLayer {
+                        alpha = appear
+                        translationY = (1f - appear) * risePx
+                    }
             ) {
                 // LAYER 1: Background with Haze blur (BEHIND content)
                 Box(
@@ -76,14 +89,27 @@ fun ModernIntentionDialog(
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Image(
-                                bitmap = app.icon,
-                                contentDescription = app.label,
+                            // Squircle well like the search rows — the icon sits on a product
+                            // plate, not on a raw light-gray square
+                            Box(
                                 modifier = Modifier
                                     .size(85.dp)
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(Color(0xFFEFEFEF))
-                            )
+                                    .clip(SquircleShapes.squircle(85.dp))
+                                    .background(Color.Black.copy(alpha = 0.35f))
+                                    .border(
+                                        1.dp,
+                                        Color.White.copy(alpha = 0.08f),
+                                        SquircleShapes.squircle(85.dp)
+                                    )
+                            ) {
+                                Image(
+                                    bitmap = app.icon,
+                                    contentDescription = app.label,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(SquircleShapes.squircle(85.dp))
+                                )
+                            }
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
                                 text = "Intention for opening ${app.label}?",
@@ -116,7 +142,11 @@ fun ModernIntentionDialog(
                                 unfocusedTextColor = Color.White,
                                 cursorColor = primaryColor
                             ),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onDone = { if (intentionText.isNotBlank()) onConfirm(intentionText) }
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(120.dp)
@@ -147,7 +177,7 @@ fun ModernIntentionDialog(
                                 onClick = {
                                     if (intentionText.isNotBlank()) onConfirm(intentionText)
                                 },
-                                text = "Proceed →",
+                                text = "Proceed",
                                 hazeState = hazeState,
                                 color = primaryColor,
                                 modifier = Modifier

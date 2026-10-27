@@ -18,15 +18,18 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
@@ -43,6 +46,7 @@ import com.example.nonelauncher.ui.modern.ModernHomeScreen
 fun LauncherScreen() {
     val context = LocalContext.current
     var isDefaultLauncher by remember { mutableStateOf(isDefaultLauncher(context)) }
+    var bypassSetup by rememberSaveable { mutableStateOf(false) }
     var showFirstLaunchWelcome by remember { mutableStateOf(false) }
     var showFeedbackPrompt by remember { mutableStateOf(false) }
     val prefsRepository = remember { UserPreferencesRepository(context) }
@@ -103,8 +107,8 @@ fun LauncherScreen() {
         )
     }
 
-    if (!isDefaultLauncher) {
-        Surface(color = androidx.compose.ui.graphics.Color.Transparent) {
+    if (!isDefaultLauncher && !bypassSetup) {
+        Surface(color = Color.Transparent) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -115,6 +119,7 @@ fun LauncherScreen() {
                 Text(
                     text = "nONE Launcher needs to be set as your default Home app to work correctly.",
                     style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(24.dp))
@@ -132,6 +137,12 @@ fun LauncherScreen() {
                 }) {
                     Text(text = "Set as Default")
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                // Detection can disagree with the system's own Home picker on some ROMs. The home
+                // screen is never held hostage to that disagreement — this always gets you through.
+                TextButton(onClick = { bypassSetup = true }) {
+                    Text(text = "Continue anyway", color = Color.White.copy(alpha = 0.8f))
+                }
             }
         }
     } else {
@@ -142,9 +153,22 @@ fun LauncherScreen() {
 }
 
 fun isDefaultLauncher(context: Context): Boolean {
+    // The home role is what Settings > Default apps reports, so it is the only check that agrees
+    // with the user. resolveActivity() answers "No activity found" on this device while nONE holds
+    // the role, which trapped the setup screen behind a button that could not change anything.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val roleManager = context.getSystemService(RoleManager::class.java)
+        if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) {
+            if (roleManager.isRoleHeld(RoleManager.ROLE_HOME)) return true
+        }
+    }
     val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
     val resolveInfo = context.packageManager.resolveActivity(intent, 0)
-    return resolveInfo?.activityInfo?.packageName == context.packageName
+    if (resolveInfo?.activityInfo?.packageName == context.packageName) return true
+    // Some ROMs leave the role unassigned while still resolving Home to the only launcher
+    // installed; Settings then shows nONE as the Home app even though isRoleHeld() is false.
+    val homeApps = context.packageManager.queryIntentActivities(intent, 0)
+    return homeApps.size == 1 && homeApps.first().activityInfo.packageName == context.packageName
 }
 
 fun openFallbackHomeSettings(context: Context) {

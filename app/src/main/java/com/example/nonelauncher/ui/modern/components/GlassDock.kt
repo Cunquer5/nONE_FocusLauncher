@@ -85,20 +85,25 @@ fun GlassDock(
                     showLabel = true
                 )
 
-                // 1 Thing — centre focal item
+                // 1 Thing — centre focal item. Active plate, label rhythm and expand
+                // direction match the sibling DockItems exactly.
                 Box(
                     modifier = Modifier
                         .height(63.dp)
                         .clip(RoundedCornerShape(33.dp))
-                        //.background(Color.Black.copy(alpha = 0.5f))
+                        .then(
+                            if (activeItem == DockItemType.ONE_THING)
+                                Modifier.background(Color.Black.copy(alpha = 0.55f))
+                            else Modifier
+                        )
                         .clickable(onClick = onOneThingClick)
                         .clearAndSetSemantics { contentDescription = "1 Thing" }
-                        .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 16.dp else 0.dp),
+                        .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 12.dp else 0.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier.size(64.dp),
+                            modifier = Modifier.size(48.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -110,15 +115,17 @@ fun GlassDock(
                         }
                         AnimatedVisibility(
                             visible = activeItem == DockItemType.ONE_THING,
-                            enter = expandHorizontally() + fadeIn(),
-                            exit = shrinkHorizontally() + fadeOut()
+                            enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
                         ) {
                             Text(
                                 text = "Thing",
                                 color = Color.White,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 17.sp,
-                                modifier = Modifier.padding(start = 1.dp)
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(start = 4.dp)
                             )
                         }
                     }

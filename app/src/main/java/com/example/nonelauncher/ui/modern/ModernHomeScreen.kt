@@ -3,13 +3,14 @@ package com.example.nonelauncher.ui.modern
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import com.example.nonelauncher.ui.theme.bottomEnter
+import com.example.nonelauncher.ui.theme.bottomExit
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,13 +25,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,14 +48,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nonelauncher.data.model.AppModel
+import com.example.nonelauncher.data.model.OneThingTask
 import com.example.nonelauncher.data.model.parseOneThingTaskWithState
 import com.example.nonelauncher.data.repository.UserPreferencesRepository
 import com.example.nonelauncher.ui.home.HomeViewModel
 import com.example.nonelauncher.ui.modern.components.*
+import com.example.nonelauncher.ui.theme.OrangePrimary
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeChild
-
-private enum class Zone { None, Top, Left, Right }
+import kotlin.math.abs
 
 @Composable
 fun ModernHomeScreen(
@@ -59,9 +70,6 @@ fun ModernHomeScreen(
     val structureSteps by homeViewModel.structureSteps.collectAsState()
     val structureIndex by homeViewModel.structureIndex.collectAsState()
     val focusModeEnabled by homeViewModel.focusModeEnabled.collectAsState()
-    val isSearching by homeViewModel.isSearching.collectAsState()
-    val contactResults by homeViewModel.contactResults.collectAsState()
-    val fileResults by homeViewModel.fileResults.collectAsState()
     val frequentPackages by homeViewModel.frequentPackages.collectAsState()
     val frequentApps = remember(frequentPackages, uiState.apps) {
         frequentPackages.mapNotNull { pkg -> uiState.apps.firstOrNull { it.packageName == pkg } }
@@ -101,6 +109,29 @@ fun ModernHomeScreen(
         }
     }
 
+    val openStructure: () -> Unit = {
+        showStructure = true
+        showSettings = false
+        showHistory = false
+        showOneThing = false
+        showInputCard = false
+        showTaskDisplay = false
+        showSearch = false
+        homeViewModel.onSearchQueryChanged("")
+    }
+
+    // Search and Structure share the bottom handle, and either can be opened while the
+    // other is up, so each entry point must close the rest first.
+    val openSearch: () -> Unit = {
+        showSearch = true
+        showStructure = false
+        showSettings = false
+        showHistory = false
+        showOneThing = false
+        showInputCard = false
+        showTaskDisplay = false
+    }
+
     val onTaskSet: (String) -> Unit = { taskStr ->
         val parsedTask = parseOneThingTaskWithState(taskStr)
         if (parsedTask != null) {
@@ -121,6 +152,13 @@ fun ModernHomeScreen(
     }
 
     val oneThingTask = uiState.oneThingTaskWithState
+    // AnimatedVisibility keeps its content composed while it slides out, and the disposal timer
+    // nulls the live task mid-exit, so the sheet keeps drawing the task it was already showing.
+    var retainedTask by remember { mutableStateOf<OneThingTask?>(null) }
+    LaunchedEffect(oneThingTask) {
+        if (oneThingTask != null) retainedTask = oneThingTask
+    }
+    val taskForSheet = oneThingTask ?: retainedTask
 
     // Left unused, the dock collapses itself back to the small handle; an open sheet keeps it anchored.
     // dockTouchTick re-arms the window on dock touches that change no other state (Phone).
@@ -131,6 +169,20 @@ fun ModernHomeScreen(
             dockVisible = false
         }
     }
+
+    // The keyboard replaces the structure sheet's 120dp dock gap when it appears. Keeping both
+    // would ride the root imePadding and fling the tall editor off the top edge — the pad
+    // shrinks while the IME is up, so the card settles a reasonable way up, not all the way.
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    // Shared by every card that owns a text field (structure editor, search)
+    val sheetPad by animateDpAsState(
+        if (imeVisible) 16.dp else 120.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "sheetPad"
+    )
 
     // Back closes the open surface (launcher convention: bare home still swallows back)
     BackHandler(enabled = showSearch || showOneThing || showSettings || showHistory || showStructure || dockVisible) {
@@ -186,84 +238,34 @@ fun ModernHomeScreen(
                     }
                 )
             }
-            // Edge-local horizontal swipes: right band = open search, left band = open structure,
-            // top band (the step chip's zone) = next/previous step. Middle of the screen does nothing.
+            // The step chip's top band is the only horizontal screen gesture left: swipe it
+            // right for the next step, left for the previous one. Search and Structure are
+            // deliberately not edge gestures anymore — the bottom handle owns both.
             .pointerInput(showSearch, anySheet, structureSteps.size) {
                 var acc = 0f
-                var zone = Zone.None
+                var onChip = false
                 detectHorizontalDragGestures(
                     onDragStart = { start ->
                         acc = 0f
-                        zone = when {
-                            start.x > size.width * 0.75f -> Zone.Right
-                            start.x < size.width * 0.25f -> Zone.Left
-                            start.y < size.height * 0.3f -> Zone.Top
-                            else -> Zone.None
-                        }
+                        onChip = start.y < size.height * 0.3f
                     },
                     onDragEnd = { acc = 0f },
                     onDragCancel = { acc = 0f },
                     onHorizontalDrag = { _, dragAmount ->
                         acc += dragAmount
-                        when {
-                            zone == Zone.Right && acc < -150f && !showSearch && !anySheet -> {
-                                showSearch = true
+                        if (onChip && structureSteps.isNotEmpty() && !showSearch && !anySheet) {
+                            if (acc < -150f) {
+                                homeViewModel.moveStructureStep(1)
                                 acc = 0f
-                            }
-                            zone == Zone.Left && acc > 150f && !showSearch && !anySheet -> {
-                                showStructure = true
-                                showSettings = false
-                                showHistory = false
-                                showOneThing = false
-                                homeViewModel.onSearchQueryChanged("")
+                            } else if (acc > 150f) {
+                                homeViewModel.moveStructureStep(-1)
                                 acc = 0f
-                            }
-                            zone == Zone.Top && structureSteps.isNotEmpty() && !showSearch && !anySheet -> {
-                                if (acc < -150f) {
-                                    homeViewModel.moveStructureStep(1)
-                                    acc = 0f
-                                } else if (acc > 150f) {
-                                    homeViewModel.moveStructureStep(-1)
-                                    acc = 0f
-                                }
                             }
                         }
                     }
                 )
             }
     ) {
-
-        // Right-edge handle — teaches/taps the swipe-from-right search gesture.
-        // 48dp-wide touch target wraps a 20dp visual pill so accessibility minimum is met.
-        // Indication is null on the wrapper: an unclipped ripple would draw a rectangle
-        // around the invisible touch box. The pill fades with surface state, like the left rail.
-        AnimatedVisibility(
-            visible = !showSearch && !anySheet,
-            enter = fadeIn(tween(180)),
-            exit = fadeOut(tween(120)),
-            modifier = Modifier.align(Alignment.CenterEnd)
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(48.dp)
-                    .height(96.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { showSearch = true }
-                    .clearAndSetSemantics { contentDescription = "Search apps, contacts, files" }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 4.dp)
-                        .width(20.dp)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
-                        .background(Color.White.copy(alpha = 0.3f))
-                )
-            }
-        }
 
         // Current structure step — tap to advance through the day's flow
         if (structureSteps.isNotEmpty() &&
@@ -303,38 +305,58 @@ fun ModernHomeScreen(
             }
         }
 
-        // 1 Thing task display
-        if (showOneThing && showTaskDisplay && uiState.oneThingTaskWithState != null) {
-            OneThingTaskDisplay(
-                task = uiState.oneThingTaskWithState!!,
-                onMainTaskCompleted = onMainTaskCompleted,
-                onUpdateSubtask = { subtaskId, isCompleted ->
-                    homeViewModel.updateSubtaskState(subtaskId, isCompleted)
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .padding(top = 12.dp, bottom = 120.dp)
-                    .padding(horizontal = 16.dp)
-            )
+        // 1 Thing task display — single glass sheet, rises like the structure editor
+        AnimatedVisibility(
+            visible = showOneThing && showTaskDisplay && oneThingTask != null,
+            enter = bottomEnter,
+            exit = bottomExit,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            val task = taskForSheet
+            if (task != null) {
+                OneThingTaskDisplay(
+                    task = task,
+                    onMainTaskCompleted = onMainTaskCompleted,
+                    onUpdateSubtask = { subtaskId, isCompleted ->
+                        homeViewModel.updateSubtaskState(subtaskId, isCompleted)
+                    },
+                    onDismiss = {
+                        showOneThing = false
+                        showTaskDisplay = false
+                        showInputCard = false
+                    },
+                    modifier = Modifier
+                        .padding(bottom = 120.dp)
+                        .padding(horizontal = 8.dp)
+                        .fillMaxHeight(0.85f)
+                )
+            }
         }
 
         // 1 Thing input card
-        if (showOneThing && showInputCard) {
+        AnimatedVisibility(
+            visible = showOneThing && showInputCard,
+            enter = bottomEnter,
+            exit = bottomExit,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             OneThingInputCard(
                 onTaskSet = onTaskSet,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .padding(bottom = 120.dp)
                     .padding(horizontal = 16.dp)
             )
         }
 
         // Settings sheet
-        if (showSettings) {
+        AnimatedVisibility(
+            visible = showSettings,
+            enter = bottomEnter,
+            exit = bottomExit,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             SettingsSheet(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .padding(bottom = 120.dp)
                     .padding(horizontal = 8.dp)
                     .fillMaxHeight(0.85f),
@@ -352,7 +374,12 @@ fun ModernHomeScreen(
         }
 
         // Intention history sheet
-        if (showHistory) {
+        AnimatedVisibility(
+            visible = showHistory,
+            enter = bottomEnter,
+            exit = bottomExit,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             IntentionHistorySheet(
                 intentions = allIntentions,
                 onDismiss = {
@@ -360,7 +387,6 @@ fun ModernHomeScreen(
                     showSettings = true
                 },
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .padding(bottom = 120.dp)
                     .padding(horizontal = 8.dp)
                     .fillMaxHeight(0.85f)
@@ -368,7 +394,12 @@ fun ModernHomeScreen(
         }
 
         // Structure editor sheet
-        if (showStructure) {
+        AnimatedVisibility(
+            visible = showStructure,
+            enter = bottomEnter,
+            exit = bottomExit,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             StructureSheet(
                 steps = structureSteps,
                 onDismiss = { showStructure = false },
@@ -377,40 +408,9 @@ fun ModernHomeScreen(
                     showStructure = false
                 },
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 120.dp)
+                    .padding(bottom = sheetPad)
                     .padding(horizontal = 8.dp)
                     .fillMaxHeight(0.8f)
-            )
-        }
-
-        // Structure access rail — hidden while the structure section, 1 Thing, or search is open
-        AnimatedVisibility(
-            visible = !showOneThing && !showSearch && !showStructure,
-            enter = fadeIn(tween(180)),
-            exit = fadeOut(tween(120)),
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .width(20.dp)
-                    .height(96.dp)
-                    .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
-                    .background(Color.White.copy(alpha = 0.3f))
-                    .clickable {
-                        if (showStructure) {
-                            showStructure = false
-                        } else {
-                            showStructure = true
-                            showSettings = false
-                            showHistory = false
-                            showOneThing = false
-                            showSearch = false
-                            homeViewModel.onSearchQueryChanged("")
-                        }
-                    }
-                    .clearAndSetSemantics { contentDescription = "Structure" }
             )
         }
 
@@ -491,28 +491,152 @@ fun ModernHomeScreen(
             }
         }
 
-        // Bottom circle — small collapsed-dock handle (48 dp touch target, 20 dp visual)
+        // Bottom dot — the collapsed dock's only handle. Tap reveals the dock; a horizontal
+        // drag pulls the dot toward the surface it opens (left Structure, right search) and
+        // names that destination as it travels. Past 40dp it goes orange, ticks once and
+        // commits on release; short of that, it springs home.
         AnimatedVisibility(
             visible = !dockShown && !showSearch,
             enter = fadeIn(tween(180, delayMillis = 120)),
             exit = fadeOut(tween(120)),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
+            val density = LocalDensity.current
+            val haptic = LocalHapticFeedback.current
+            var dragX by remember { mutableFloatStateOf(0f) } // dp; negative = left
+            var isDragging by remember { mutableStateOf(false) }
+            var armedSide by remember { mutableIntStateOf(0) }
+            val threshold = 40f
+            val progress = (abs(dragX) / threshold).coerceIn(0f, 1f)
+            val eased = progress * progress * (3f - 2f * progress)
+
+            // Released short of the threshold, the dot falls back to rest under its own spring.
+            LaunchedEffect(isDragging) {
+                if (!isDragging && dragX != 0f) {
+                    animate(
+                        initialValue = dragX,
+                        targetValue = 0f,
+                        // Critically damped: an overshoot would flip the dot's stretch and
+                        // flash the opposite direction's chip on the way home.
+                        animationSpec = spring(dampingRatio = 0.9f, stiffness = 550f)
+                    ) { value, _ ->
+                        dragX = value
+                    }
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp)
-                    .size(48.dp)
-                    .clickable { dockVisible = true }
-                    .clearAndSetSemantics { contentDescription = "Show dock" },
+                    .fillMaxWidth()
+                    .height(56.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // Only the active direction exists while the finger is down, sliding out
+                // from behind the dot; it clears on release instead of riding the spring back.
+                if (isDragging && dragX < -2f) {
+                    HandleDestinationChip(
+                        label = "Structure",
+                        side = -1,
+                        progress = eased,
+                        armed = armedSide == -1
+                    )
+                } else if (isDragging && dragX > 2f) {
+                    HandleDestinationChip(
+                        label = "Search",
+                        side = 1,
+                        progress = eased,
+                        armed = armedSide == 1
+                    )
+                }
+
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.45f))
-                )
+                        .size(56.dp)
+                        // No ripple: the default (dark) indication filled the square touch
+                        // bounds behind the round dot. The stretch is the press feedback.
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { dockVisible = true }
+                        // After clickable so the drag detector sees the Main pass first: a swipe is
+                        // consumed and cancels the tap, while a still finger still opens the dock.
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragStart = {
+                                    armedSide = 0
+                                    dragX = 0f
+                                    isDragging = true
+                                },
+                                onDragCancel = {
+                                    armedSide = 0
+                                    isDragging = false
+                                },
+                                onHorizontalDrag = { _, dragAmount ->
+                                    val deltaDp = with(density) { dragAmount.toDp().value }
+                                    dragX = (dragX + deltaDp).coerceIn(-72f, 72f)
+                                    val nowArmed = when {
+                                        dragX <= -threshold -> -1
+                                        dragX >= threshold -> 1
+                                        else -> 0
+                                    }
+                                    if (nowArmed != 0 && nowArmed != armedSide) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    }
+                                    armedSide = nowArmed
+                                },
+                                onDragEnd = {
+                                    val target = armedSide
+                                    armedSide = 0
+                                    isDragging = false
+                                    when (target) {
+                                        -1 -> openStructure()
+                                        1 -> openSearch()
+                                    }
+                                }
+                            )
+                        }
+                        // Swipes have no TalkBack equivalent, so both destinations are also
+                        // exposed as accessibility actions on the same node.
+                        .semantics {
+                            contentDescription =
+                                "Dock. Tap to open. Swipe left for Structure, swipe right for search."
+                            customActions = listOf(
+                                CustomAccessibilityAction("Open Structure") {
+                                    openStructure()
+                                    true
+                                },
+                                CustomAccessibilityAction("Open Search") {
+                                    openSearch()
+                                    true
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Direction reads from the dot's own body: it leans and stretches toward
+                    // the surface the finger is pulling it to, anchored on the far edge.
+                    val direction = if (dragX < 0f) -1f else 1f
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer {
+                                translationX = (dragX * 0.55f).coerceIn(-24f, 24f).dp.toPx()
+                                scaleX = 1f + 0.5f * eased
+                                scaleY = 1f - 0.12f * eased
+                                transformOrigin = TransformOrigin(
+                                    if (direction < 0f) 1f else 0f,
+                                    0.5f
+                                )
+                            }
+                            .clip(CircleShape)
+                            .background(
+                                if (armedSide != 0) OrangePrimary
+                                else Color.White.copy(alpha = 0.45f + 0.4f * eased)
+                            )
+                    )
+                }
             }
         }
 
@@ -520,14 +644,8 @@ fun ModernHomeScreen(
         // Spring arrival decelerates naturally; exit is a stiffer, faster retract.
         AnimatedVisibility(
             visible = dockShown,
-            enter = slideInVertically(
-                animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
-                initialOffsetY = { it }
-            ) + fadeIn(tween(200)),
-            exit = slideOutVertically(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 700f),
-                targetOffsetY = { it }
-            ) + fadeOut(tween(150)),
+            enter = bottomEnter,
+            exit = bottomExit,
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             GlassDock(
@@ -576,14 +694,16 @@ fun ModernHomeScreen(
         )
         }
 
-        // Search overlay — slides in from the right on swipe-from-right
+        // Search overlay — a floating glass card that rises from the bottom; the bottom
+        // handle's rightward swipe is its only trigger now that the edge artifact is gone.
         UniversalSearchOverlay(
             visible = showSearch,
+            bottomPad = sheetPad,
             searchQueryFlow = homeViewModel.searchQuery,
             onSearchQueryChange = { homeViewModel.onSearchQueryChanged(it) },
             apps = uiState.apps,
-            contacts = contactResults,
-            files = fileResults,
+            contactsFlow = homeViewModel.contactResults,
+            filesFlow = homeViewModel.fileResults,
             onDismiss = {
                 showSearch = false
                 // Query is preserved; Pixel-launcher behavior — a mis-tap on empty glass
@@ -635,7 +755,7 @@ fun ModernHomeScreen(
             onRefreshResults = { homeViewModel.refreshSearch() },
             focusModeEnabled = focusModeEnabled,
             frequentApps = frequentApps,
-            isSearching = isSearching,
+            isSearchingFlow = homeViewModel.isSearching,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -687,5 +807,42 @@ fun ModernHomeScreen(
                 }
             )
         }
+    }
+}
+
+/**
+ * The destination that a handle swipe is pulling toward. It rides out from behind the dot as
+ * the drag grows and turns orange once the gesture is armed, so the target is named before the
+ * finger lifts rather than discovered after the sheet opens.
+ */
+@Composable
+private fun HandleDestinationChip(
+    label: String,
+    side: Int,
+    progress: Float,
+    armed: Boolean,
+) {
+    val shape = RoundedCornerShape(50)
+    Box(
+        modifier = Modifier
+            .offset(x = (side * 86f * progress).dp)
+            .alpha(progress)
+            .clip(shape)
+            .background(Color(0xFF0F0F0F).copy(alpha = 0.62f))
+            .border(
+                width = 1.dp,
+                color = if (armed) OrangePrimary else Color.White.copy(alpha = 0.18f),
+                shape = shape
+            )
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            // Transient gesture feedback; the handle itself carries the accessibility actions.
+            .clearAndSetSemantics { }
+    ) {
+        Text(
+            text = label,
+            color = if (armed) OrangePrimary else Color.White.copy(alpha = 0.9f),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

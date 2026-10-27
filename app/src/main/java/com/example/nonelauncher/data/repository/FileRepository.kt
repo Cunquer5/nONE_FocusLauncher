@@ -2,6 +2,7 @@ package com.example.nonelauncher.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.provider.MediaStore
 import com.example.nonelauncher.data.model.FileModel
 import com.example.nonelauncher.data.model.FileType
@@ -17,16 +18,7 @@ class FileRepository(private val context: Context) {
     suspend fun searchFiles(query: String): List<FileModel> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
 
-        // Check permissions based on Android version
-        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
-        } else {
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        }
-
-        if (!hasPermission) return@withContext emptyList()
+        if (!canReadFiles(context)) return@withContext emptyList()
 
         val files = mutableListOf<FileModel>()
         val contentResolver = context.contentResolver
@@ -89,5 +81,26 @@ class FileRepository(private val context: Context) {
         }
         
         files.take(20)
+    }
+
+    companion object {
+        /**
+         * Whether file search can actually read rows for the current query.
+         * Documents/ebooks/archives are only visible through MediaStore.Files to a UID that holds
+         * All files access (Android 11+), so that is the primary route; the media permissions keep
+         * images/video/audio searchable when it is not granted (no regression for media-only users).
+         */
+        fun canReadFiles(context: Context): Boolean {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+                return true
+            }
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
+            } else {
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            }
+        }
     }
 }

@@ -1,17 +1,15 @@
 package com.example.nonelauncher.ui.modern.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -24,6 +22,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
@@ -31,30 +31,44 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.theme.SquircleShapes
+import com.example.nonelauncher.ui.theme.bottomEnter
+import com.example.nonelauncher.ui.theme.bottomExit
 import com.example.nonelauncher.ui.theme.glassPress
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.data.model.ContactModel
 import com.example.nonelauncher.data.model.FileModel
+import com.example.nonelauncher.data.repository.FileRepository
 import com.example.nonelauncher.ui.components.AppIcon
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
+import com.example.nonelauncher.ui.components.GlassContainer
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.core.content.ContextCompat
 import androidx.core.app.ActivityCompat
 import android.content.pm.PackageManager
@@ -63,7 +77,8 @@ import android.util.Log
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Full-screen search overlay, shown when the user swipes in from the right edge.
+ * Search as a floating glass card above the wallpaper, the same family as the structure editor.
+ * Shown by the right-edge artifact, a rightward swipe on the collapsed-dock handle, or Back.
  * Automatically focuses the search field when visible.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -73,8 +88,8 @@ fun UniversalSearchOverlay(
     searchQueryFlow: StateFlow<String>,
     onSearchQueryChange: (String) -> Unit,
     apps: List<AppModel>,
-    contacts: List<ContactModel>,
-    files: List<FileModel>,
+    contactsFlow: StateFlow<List<ContactModel>>,
+    filesFlow: StateFlow<List<FileModel>>,
     onDismiss: () -> Unit,
     onCancel: () -> Unit,
     onAppClick: (AppModel) -> Unit,
@@ -83,13 +98,19 @@ fun UniversalSearchOverlay(
     onFileClick: (FileModel) -> Unit,
     focusModeEnabled: Boolean = false,
     frequentApps: List<AppModel> = emptyList(),
-    isSearching: Boolean = false,
+    isSearchingFlow: StateFlow<Boolean>,
     onRefreshResults: () -> Unit = {},
+    bottomPad: Dp = 120.dp,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val hazeState = HazeGlassMorphism.rememberHazeState()
     val focusRequester = remember { FocusRequester() }
+
+    // Collected here, not in the home screen's scope: a streaming contact/file result then
+    // recomposes only the overlay subtree, not the whole home behind the blur.
+    val contacts by contactsFlow.collectAsState()
+    val files by filesFlow.collectAsState()
+    val isSearching by isSearchingFlow.collectAsState()
 
     // Permission state is re-read from the PackageManager after every dialog and every Settings
     // visit — grants can also happen outside the app.
@@ -97,29 +118,24 @@ fun UniversalSearchOverlay(
     val isGranted: (String) -> Boolean = {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
-    val filePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        android.Manifest.permission.READ_MEDIA_IMAGES
-    } else {
-        android.Manifest.permission.READ_EXTERNAL_STORAGE
-    }
     var hasContactPermission by remember { mutableStateOf(isGranted(android.Manifest.permission.READ_CONTACTS)) }
-    var hasFilePermission by remember { mutableStateOf(isGranted(filePermission)) }
+    var hasFilePermission by remember { mutableStateOf(FileRepository.canReadFiles(context)) }
     val refreshPermissionState: () -> Unit = {
         hasContactPermission = isGranted(android.Manifest.permission.READ_CONTACTS)
-        hasFilePermission = isGranted(filePermission)
+        hasFilePermission = FileRepository.canReadFiles(context)
     }
 
     var refocusTick by remember { mutableStateOf(0) }
 
     // Once the user picks "Don't ask again", requestPermissions() auto-denies with no dialog at
     // all and shouldShowRequestPermissionRationale() goes false for that permission — App Settings
-    // is the only route left. Contacts and files are different permission groups, so one request
-    // can end with a dialog for one and a silent auto-deny for the other.
+    // is the only route left. Each permission group gets its own check so a dead-end is detected
+    // per source (contacts vs. legacy storage), not lumped together.
     val canAskAgain: (String) -> Boolean = { permission ->
         activity != null && ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
     }
 
-    val openAppSettingsLauncher = rememberLauncherForActivityResult(
+    val systemPageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
         refreshPermissionState()
@@ -127,24 +143,34 @@ fun UniversalSearchOverlay(
         onRefreshResults()
     }
 
-    val openAppSettings: () -> Unit = {
-        openAppSettingsLauncher.launch(
-            android.content.Intent(
-                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                android.net.Uri.fromParts("package", context.packageName, null)
-            )
-        )
-    }
+    val openSystemPage: (android.content.Intent) -> Unit = { intent -> systemPageLauncher.launch(intent) }
 
-    val permissionsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
+    // App Settings — the only route left once a runtime permission is permanently denied.
+    val appSettingsIntent = android.content.Intent(
+        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        android.net.Uri.fromParts("package", context.packageName, null)
+    )
+
+    // Contacts and (legacy) files are separate permission groups, each with its own permanently-denied
+    // check — a dead-end in one group shouldn't send the user to App Settings while asking about the other.
+    val contactsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
     ) {
         refreshPermissionState()
-        val unreachable =
-            (!hasContactPermission && !canAskAgain(android.Manifest.permission.READ_CONTACTS)) ||
-            (!hasFilePermission && !canAskAgain(filePermission))
-        if (unreachable) {
-            openAppSettings()
+        if (!hasContactPermission && !canAskAgain(android.Manifest.permission.READ_CONTACTS)) {
+            openSystemPage(appSettingsIntent)
+        } else {
+            refocusTick++
+            onRefreshResults()
+        }
+    }
+
+    val storageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        refreshPermissionState()
+        if (!hasFilePermission && !canAskAgain(android.Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            openSystemPage(appSettingsIntent)
         } else {
             refocusTick++
             onRefreshResults()
@@ -161,18 +187,29 @@ fun UniversalSearchOverlay(
         }
     }
 
-    // Permission requests are user-initiated from the results affordance — never ambushed mid-keystroke
-    val requestMissingPermissions: () -> Unit = {
-        val missing = mutableListOf<String>()
-        if (!hasContactPermission) missing.add(android.Manifest.permission.READ_CONTACTS)
-        if (!hasFilePermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            missing.add(android.Manifest.permission.READ_MEDIA_IMAGES)
-            missing.add(android.Manifest.permission.READ_MEDIA_VIDEO)
-            missing.add(android.Manifest.permission.READ_MEDIA_AUDIO)
-        } else if (!hasFilePermission) {
-            missing.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+    // Permission requests are user-initiated from the results affordance — never ambushed mid-keystroke.
+    val requestContacts: () -> Unit = {
+        contactsLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+    }
+
+    val requestFiles: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // All files access is an app-op with no runtime dialog — its Settings page is the grant UI.
+            val appScoped = android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                android.net.Uri.fromParts("package", context.packageName, null)
+            )
+            try {
+                openSystemPage(appScoped)
+            } catch (e: android.content.ActivityNotFoundException) {
+                // Some OEM ROMs omit the app-specific page; fall back to the general one.
+                openSystemPage(
+                    android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                )
+            }
+        } else {
+            storageLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
         }
-        if (missing.isNotEmpty()) permissionsLauncher.launch(missing.toTypedArray())
     }
 
     // Tiered ranking, best-target-on-Enter and the editor text itself live in the overlay
@@ -189,19 +226,15 @@ fun UniversalSearchOverlay(
         }
     }
 
-    // (permission auto-request on first keystroke removed — see requestMissingPermissions,
-    // triggered by an explicit affordance in the results list)
+    // (permission auto-request on first keystroke removed — see requestContacts/requestFiles,
+    // triggered by explicit affordances in the results list)
 
+    // The overlay enters and retracts with the same shared spring as the sheets and the dock —
+    // everything in this launcher rises from the bottom, whichever edge taught you the gesture.
     AnimatedVisibility(
         visible = visible,
-        enter = slideInHorizontally(
-            animationSpec = spring(dampingRatio = 0.86f, stiffness = 420f),
-            initialOffsetX = { it }
-        ) + fadeIn(tween(180)),
-        exit = slideOutHorizontally(
-            animationSpec = spring(dampingRatio = 1f, stiffness = 600f),
-            targetOffsetX = { it }
-        ) + fadeOut(tween(140)),
+        enter = bottomEnter,
+        exit = bottomExit,
         modifier = modifier
     ) {
         // Editor text is owned here rather than hoisted: the ViewModel echoes it back a frame
@@ -244,33 +277,66 @@ fun UniversalSearchOverlay(
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            // Blur background layer
+            // Outside the card: tap or swipe left to put search away. The card registers its own
+            // pointer node, so presses on its glass never reach this layer.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .haze(state = hazeState, backgroundColor = Color.Transparent)
-            )
-
-            // Glass surface — taps on empty area dismiss (indication=null: a full-panel ripple bloom is noise)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .hazeChild(state = hazeState, blurRadius = 28.dp)
-                    .background(Color.Black.copy(alpha = 0.75f))
-                    .semantics { paneTitle = "Search apps, contacts, files" }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = onDismiss
                     )
+                    .pointerInput(Unit) {
+                        var total = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { total = 0f },
+                            onDragCancel = { total = 0f },
+                            onHorizontalDrag = { _, dragAmount -> total += dragAmount },
+                            onDragEnd = {
+                                if (total < -80.dp.toPx()) onDismiss()
+                                total = 0f
+                            }
+                        )
+                    }
+            )
+
+            // Floating glass card — 32dp corners, 8dp side margins, parked a dock-height above the
+            // bottom edge (the gap collapses when the keyboard is up so the field stays in reach).
+            GlassContainer(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = bottomPad)
+                    .padding(horizontal = 8.dp)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.8f)
+                    .semantics { paneTitle = "Search apps, contacts, files" }
+                    // Register a hit target over the glass so presses on the card do not fall
+                    // through to the dismiss layer behind it.
+                    .pointerInput(Unit) {
+                        detectTapGestures { }
+                    }
+                    .pointerInput(Unit) {
+                        var total = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { total = 0f },
+                            onDragCancel = { total = 0f },
+                            onHorizontalDrag = { _, dragAmount -> total += dragAmount },
+                            onDragEnd = {
+                                if (total < -80.dp.toPx()) onDismiss()
+                                total = 0f
+                            }
+                        )
+                    },
+                cornerRadius = 32.dp,
+                blurRadius = 22.dp,
+                tintAlpha = 0.55f
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 16.dp)
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 20.dp, bottom = 12.dp)
                 ) {
                     // Search bar row
                     Row(
@@ -284,7 +350,7 @@ fun UniversalSearchOverlay(
                                 onSearchQueryChange(it)
                             },
                             placeholder = {
-                                Text("Search apps, contacts, files...", color = Color.White.copy(0.75f))
+                                Text("Search apps, contacts, files...", color = Color.White.copy(alpha = 0.65f))
                             },
                             leadingIcon = {
                                 // Decorative — the placeholder already labels the field for TalkBack.
@@ -309,8 +375,9 @@ fun UniversalSearchOverlay(
                                 }
                             },
                             colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.White.copy(alpha = 0.1f),
-                                unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
+                                // Same field as the structure editor: a quiet well on the glass
+                                focusedContainerColor = Color.Black.copy(alpha = 0.35f),
+                                unfocusedContainerColor = Color.Black.copy(alpha = 0.35f),
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent,
                                 focusedTextColor = Color.White,
@@ -319,7 +386,7 @@ fun UniversalSearchOverlay(
                             ),
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(24.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .focusRequester(focusRequester),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { launchTopResult() }),
@@ -328,14 +395,30 @@ fun UniversalSearchOverlay(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Explicit close clears the query; tap-glass dismiss (onDismiss) does not.
-                        // TextButton, not IconButton-with-Close — visually distinct from the inline clear.
-                        TextButton(onClick = onCancel) {
-                            Text("Cancel", color = Color.White)
+                        // Same circular close as the structure sheet. It clears the query; a press
+                        // outside the card only hides search and keeps the typed text.
+                        IconButton(
+                            onClick = onCancel,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.5f))
+                                .border(
+                                    width = 1.dp,
+                                    color = Color.White.copy(alpha = 0.335f),
+                                    shape = CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Close search",
+                                tint = Color.White.copy(0.8f),
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Fetching contacts/files for the current query — thin orange hairline
                     if (isSearching && query.isNotBlank()) {
@@ -366,8 +449,7 @@ fun UniversalSearchOverlay(
                                         apps = frequentApps.take(8),
                                         onAppClick = onAppClick,
                                         onTogglePinned = onTogglePinned,
-                                        focusModeEnabled = focusModeEnabled,
-                                        hazeState = hazeState
+                                        focusModeEnabled = focusModeEnabled
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                 }
@@ -377,8 +459,7 @@ fun UniversalSearchOverlay(
                                         apps = pinnedApps,
                                         onAppClick = onAppClick,
                                         onTogglePinned = onTogglePinned,
-                                        focusModeEnabled = focusModeEnabled,
-                                        hazeState = hazeState
+                                        focusModeEnabled = focusModeEnabled
                                     )
                                 }
                             }
@@ -400,45 +481,48 @@ fun UniversalSearchOverlay(
                     } else {
                         LazyColumn(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxWidth()
+                                .weight(1f)
                                 // Live announcements only — a container contentDescription here
                                 // would override the readable children for TalkBack
                                 .semantics { liveRegion = LiveRegionMode.Polite },
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
+                            // Results flow as cardless rows grouped by floating labels —
+                            // headers scroll with the list; nothing occludes on the glass
+
                             // Apps Section
                             if (filteredApps.isNotEmpty()) {
-                                stickyHeader {
+                                item {
                                     SearchSectionHeader("Apps")
                                 }
-                                item {
-                                    AppsGrid(
-                                        apps = filteredApps,
+                                items(filteredApps) { app ->
+                                    AppResultRow(
+                                        app = app,
+                                        query = query,
                                         onAppClick = onAppClick,
                                         onTogglePinned = onTogglePinned,
-                                        hazeState = hazeState
                                     )
                                 }
                             }
 
                             // Contacts Section
                             if (contacts.isNotEmpty()) {
-                                stickyHeader {
+                                item {
                                     SearchSectionHeader("Contacts")
                                 }
                                 items(contacts) { contact ->
-                                    ContactItem(contact, onContactClick)
+                                    ContactItem(contact, query, onContactClick)
                                 }
                             }
 
                             // Files Section
                             if (files.isNotEmpty()) {
-                                stickyHeader {
+                                item {
                                     SearchSectionHeader("Files")
                                 }
                                 items(files) { file ->
-                                    FileItem(file, onFileClick)
+                                    FileItem(file, query, onFileClick)
                                 }
                             }
 
@@ -471,20 +555,23 @@ fun UniversalSearchOverlay(
                                             style = MaterialTheme.typography.bodyMedium
                                         )
                                         if (missingPermissions) {
-                                            TextButton(onClick = requestMissingPermissions) {
-                                                Text("Add contacts and files to results", color = OrangePrimary)
-                                            }
+                                            AddSourcesRow(
+                                                missingContacts = !hasContactPermission,
+                                                missingFiles = !hasFilePermission,
+                                                onAddContacts = requestContacts,
+                                                onAddFiles = requestFiles,
+                                            )
                                         }
                                     }
                                 }
                             } else if (missingPermissions) {
                                 item {
-                                    TextButton(onClick = requestMissingPermissions) {
-                                        Text(
-                                            "Add contacts and files to results",
-                                            color = OrangePrimary
-                                        )
-                                    }
+                                    AddSourcesRow(
+                                        missingContacts = !hasContactPermission,
+                                        missingFiles = !hasFilePermission,
+                                        onAddContacts = requestContacts,
+                                        onAddFiles = requestFiles,
+                                    )
                                 }
                             }
                         }
@@ -510,12 +597,33 @@ private fun SearchSectionHeader(title: String) {
 }
 
 @Composable
+private fun AddSourcesRow(
+    missingContacts: Boolean,
+    missingFiles: Boolean,
+    onAddContacts: () -> Unit,
+    onAddFiles: () -> Unit,
+) {
+    if (!missingContacts && !missingFiles) return
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (missingContacts) {
+            TextButton(onClick = onAddContacts) {
+                Text("Add contacts to results", color = OrangePrimary)
+            }
+        }
+        if (missingFiles) {
+            TextButton(onClick = onAddFiles) {
+                Text("Add files to results", color = OrangePrimary)
+            }
+        }
+    }
+}
+
+@Composable
 private fun AppsGrid(
     apps: List<AppModel>,
     onAppClick: (AppModel) -> Unit,
     onTogglePinned: (AppModel) -> Unit,
-    focusModeEnabled: Boolean = false,
-    hazeState: dev.chrisbanes.haze.HazeState
+    focusModeEnabled: Boolean = false
 ) {
     val context = LocalContext.current
     val rows = (apps.size + 3) / 4
@@ -558,8 +666,7 @@ private fun AppsGrid(
                                     } catch (e: Exception) {
                                         Log.w("UniversalSearchOverlay", "App Info launch failed for ${apps[index].packageName}", e)
                                     }
-                                },
-                                hazeState = hazeState
+                                }
                             )
                         }
                     } else {
@@ -571,23 +678,150 @@ private fun AppsGrid(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ContactItem(contact: ContactModel, onClick: (ContactModel) -> Unit) {
+private fun AppResultRow(
+    app: AppModel,
+    query: String,
+    onAppClick: (AppModel) -> Unit,
+    onTogglePinned: (AppModel) -> Unit,
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    var showMenu by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
+    val rowShape = RoundedCornerShape(16.dp)
+    val iconShape = SquircleShapes.squircle(44.dp)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(rowShape)
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    onAppClick(app)
+                },
+                onLongClick = { showMenu = true }
+            )
+            .glassPress(interactionSource, rowShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        // Same icon well as the launcher grid, static (no hazeChild): 16 blurred wells
+        // recomputing during fling is the one place this surface would drop frames
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(iconShape)
+                .background(Color.Black.copy(alpha = 0.35f))
+                .border(1.dp, Color.White.copy(alpha = 0.08f), iconShape)
+        ) {
+            Image(
+                bitmap = app.icon,
+                contentDescription = app.label,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(iconShape)
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Text(
+            text = highlightMatch(app.label, query),
+            color = Color.White,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.background(Color.Black.copy(alpha = 0.7f))
+        ) {
+            DropdownMenuItem(
+                text = { Text("App Info", color = Color.White) },
+                onClick = {
+                    showMenu = false
+                    try {
+                        context.startActivity(
+                            android.content.Intent(
+                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.fromParts("package", app.packageName, null)
+                            )
+                        )
+                    } catch (e: Exception) {
+                        Log.w("UniversalSearchOverlay", "App Info launch failed for ${app.packageName}", e)
+                    }
+                }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        if (app.isPinned) "Remove from Essentials" else "Add to Essentials",
+                        color = Color.White
+                    )
+                },
+                onClick = {
+                    showMenu = false
+                    onTogglePinned(app)
+                }
+            )
+            if (app.isUninstallable) {
+                DropdownMenuItem(
+                    text = { Text("Uninstall", color = Color.White) },
+                    onClick = {
+                        showMenu = false
+                        try {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_DELETE,
+                                    android.net.Uri.fromParts("package", app.packageName, null)
+                                )
+                            )
+                        } catch (e: Exception) {
+                            Log.w("UniversalSearchOverlay", "Uninstall launch failed for ${app.packageName}", e)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+// Emphasises what the user actually typed: matched span in brand orange, rest in white.
+private fun highlightMatch(text: String, query: String): AnnotatedString {
+    val q = query.trim()
+    val idx = if (q.isEmpty()) -1 else text.indexOf(q, ignoreCase = true)
+    if (idx < 0) return AnnotatedString(text)
+    return buildAnnotatedString {
+        withStyle(SpanStyle(color = Color.White.copy(alpha = 0.8f))) { append(text.substring(0, idx)) }
+        withStyle(SpanStyle(color = OrangePrimary, fontWeight = FontWeight.Bold)) { append(text.substring(idx, idx + q.length)) }
+        withStyle(SpanStyle(color = Color.White.copy(alpha = 0.8f))) { append(text.substring(idx + q.length)) }
+    }
+}
+
+@Composable
+private fun ContactItem(contact: ContactModel, query: String, onClick: (ContactModel) -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val rowShape = RoundedCornerShape(16.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .clip(rowShape)
             .clickable(interactionSource = interactionSource, indication = null) { onClick(contact) }
-            .glassPress(interactionSource, RoundedCornerShape(12.dp))
-            .padding(12.dp),
+            .glassPress(interactionSource, rowShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .size(44.dp)
+                .clip(CircleShape)
                 .background(Color.White.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
@@ -607,10 +841,10 @@ private fun ContactItem(contact: ContactModel, onClick: (ContactModel) -> Unit) 
                 )
             }
         }
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(14.dp))
         Column {
             Text(
-                text = contact.name,
+                text = highlightMatch(contact.name, query),
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
@@ -629,39 +863,88 @@ private fun ContactItem(contact: ContactModel, onClick: (ContactModel) -> Unit) 
 }
 
 @Composable
-private fun FileItem(file: FileModel, onClick: (FileModel) -> Unit) {
+private fun FileItem(file: FileModel, query: String, onClick: (FileModel) -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
+    val rowShape = RoundedCornerShape(16.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .clip(rowShape)
             .clickable(interactionSource = interactionSource, indication = null) { onClick(file) }
-            .glassPress(interactionSource, RoundedCornerShape(12.dp))
-            .padding(12.dp),
+            .glassPress(interactionSource, rowShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            Icons.Default.Description,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
+        // Bare line glyph on the glass — a tinted well behind a line icon reads as a drop
+        // shadow square. Same 44dp slot keeps the column rhythm with app and contact rows.
+        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+            DocumentGlyph(modifier = Modifier.size(24.dp))
+        }
+        Spacer(modifier = Modifier.width(14.dp))
         Column {
             Text(
-                text = file.name,
+                text = highlightMatch(file.name, query),
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            val ext = file.name.substringAfterLast('.', "").uppercase()
+            val kb = file.size / 1024
+            val sizeText = if (kb >= 1024) "${kb / 1024} MB" else "$kb KB"
             Text(
-                text = "${(file.size / 1024)} KB",
+                text = if (ext.isNotEmpty()) "$ext · $sizeText" else sizeText,
                 color = Color.White.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.bodySmall
             )
         }
+    }
+}
+
+// Hand-drawn line glyph instead of Icons.Default.Description — the stock filled document reads
+// generic next to the app wells; a single rounded stroke with a folded corner matches the
+// launcher's line weight. Two alphas: confident body, quiet fold.
+@Composable
+private fun DocumentGlyph(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val strokeW = w * 0.075f
+        val fold = w * 0.3f
+        val r = w * 0.16f
+        val left = strokeW / 2f
+        val top = strokeW / 2f
+        val right = w - strokeW / 2f
+        val bottom = h - strokeW / 2f
+
+        val body = Path().apply {
+            moveTo(left + r, top)
+            lineTo(right - fold, top)
+            lineTo(right, top + fold)
+            lineTo(right, bottom - r)
+            quadraticBezierTo(right, bottom, right - r, bottom)
+            lineTo(left + r, bottom)
+            quadraticBezierTo(left, bottom, left, bottom - r)
+            lineTo(left, top + r)
+            quadraticBezierTo(left, top, left + r, top)
+            close()
+        }
+        drawPath(
+            body,
+            Color.White.copy(alpha = 0.8f),
+            style = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+
+        val corner = Path().apply {
+            moveTo(right - fold, top)
+            lineTo(right - fold, top + fold)
+            lineTo(right, top + fold)
+        }
+        drawPath(
+            corner,
+            Color.White.copy(alpha = 0.45f),
+            style = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
     }
 }

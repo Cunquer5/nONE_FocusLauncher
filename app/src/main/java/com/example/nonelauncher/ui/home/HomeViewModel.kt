@@ -41,7 +41,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     private val _installedApps = MutableStateFlow<List<AppModel>>(emptyList())
-    private val _recentIntentions = intentionRepository.getAllIntentions().map { it }
+    // Single shared subscription to the intention table: uiState and the history sheet read this
+    // same StateFlow rather than each launching the Room query separately.
+    val allIntentions: StateFlow<List<Intention>> = intentionRepository.getAllIntentions()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
     
     private val _searchQuery = MutableStateFlow("")
     private val _contactResults = MutableStateFlow<List<ContactModel>>(emptyList())
@@ -84,7 +91,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     val uiState: StateFlow<HomeUiState> = combine(
         appsWithPins,
-        _recentIntentions,
+        allIntentions,
         prefsRepository.oneThingTask,
         prefsRepository.oneThingTaskWithState
     ) { apps, intentions, oneThing, oneThingWithState ->
@@ -101,8 +108,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = HomeUiState()
     )
-
-    val allIntentions = intentionRepository.getAllIntentions()
 
     init {
         loadApps()
@@ -184,6 +189,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateSubtaskState(subtaskId: String, isCompleted: Boolean) {
         val currentTask = prefsRepository.oneThingTaskWithState.value ?: return
+        // Re-opening a done step cancels the pending disposal: the countdown only survives while
+        // the task stays complete, otherwise it would delete the task mid-correction.
+        if (!isCompleted) oneThingResetJob?.cancel()
         val updatedTask = currentTask.copy(
             subTasks = currentTask.subTasks.map { subTask ->
                 if (subTask.id == subtaskId) subTask.copy(isCompleted = isCompleted) else subTask
