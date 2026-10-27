@@ -17,7 +17,6 @@ import com.example.nonelauncher.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +26,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
@@ -57,7 +55,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val isSearching: StateFlow<Boolean> = _isSearching
 
     // Search state stays off uiState: a keystroke that republishes the whole HomeUiState
-    // recomposes the entire home screen underneath the blurred overlay.
+    // recomposes the entire home screen underneath the search sheet.
     val searchQuery: StateFlow<String> = _searchQuery
     val contactResults: StateFlow<List<ContactModel>> = _contactResults
     val fileResults: StateFlow<List<FileModel>> = _fileResults
@@ -189,9 +187,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateSubtaskState(subtaskId: String, isCompleted: Boolean) {
         val currentTask = prefsRepository.oneThingTaskWithState.value ?: return
-        // Re-opening a done step cancels the pending disposal: the countdown only survives while
-        // the task stays complete, otherwise it would delete the task mid-correction.
-        if (!isCompleted) oneThingResetJob?.cancel()
         val updatedTask = currentTask.copy(
             subTasks = currentTask.subTasks.map { subTask ->
                 if (subTask.id == subtaskId) subTask.copy(isCompleted = isCompleted) else subTask
@@ -200,19 +195,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         prefsRepository.setOneThingTaskWithState(updatedTask)
     }
 
-    fun resetOneThingTask() {
-        prefsRepository.setOneThingTaskWithState(null)
+    /** Completing the task is a state the day can hold, not a deletion. Only "New task" clears it. */
+    fun setMainTaskCompleted(isCompleted: Boolean) {
+        val currentTask = prefsRepository.oneThingTaskWithState.value ?: return
+        prefsRepository.setOneThingTaskWithState(currentTask.copy(isMainCompleted = isCompleted))
     }
 
-    private var oneThingResetJob: Job? = null
-
-    /** Disposes the completed 1 Thing task after 5s; re-arming cancels the previous countdown. */
-    fun scheduleOneThingReset() {
-        oneThingResetJob?.cancel()
-        oneThingResetJob = viewModelScope.launch {
-            delay(5000L)
-            resetOneThingTask()
-        }
+    fun resetOneThingTask() {
+        prefsRepository.setOneThingTaskWithState(null)
     }
 
     // --- Structure passthroughs ---

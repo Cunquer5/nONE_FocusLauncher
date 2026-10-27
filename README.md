@@ -40,6 +40,31 @@
 
 ## Changelog
 
+### v1.5.0 - October 27, 2026
+
+#### Redesign — Departure Board
+- **Home is a board**: a flat matte console over the wallpaper — 44dp header rail (NONE · date · clock · remaining), pinstriped 1 Thing band, and the day's log as fixed NO./STEP/STATUS columns.
+- **1 Thing as the current departure**: white paint band with the focus and one full-height orange action berth.
+- **Tap a row to set the step**: the current row lights its figure orange inside a berth tint and boxes its NOW status; past rows strike through and dim without moving the grid. The next row's STATUS is boxed in white.
+- **Board dock and lamp**: the dock is a three-cell control strip with steel seams; the bottom handle is a white lamp with a soft halo that names Structure (left) and Search (right) as you pull it.
+- **Every surface rebuilt**: search, Structure editor, 1 Thing display and input, settings, intention history, wallpaper picker, the intention gate, and the default-home screen now use the same board material instead of glass.
+- **Orange stays an action color**: it marks the one button on a surface and the current row, never a decoration.
+
+#### Details
+- Self-hosted board type in `ui/theme/Board.kt`: Oswald for the display voice, Roboto Mono for figures, Inter for labels — plus flap cells, steel hairlines, and the sequential flap-in wordmark on sheets.
+- Structure rows remain ordered text with no fabricated times; the board's first column is the step number.
+- Welcome copy now matches the real gestures: swipes on the lamp (left Structure, right search) and swipe up for the dock.
+
+#### Launch readiness
+- **The board stays up**: opening any sheet dims the board behind a scrim instead of replacing it with bare wallpaper, and tapping the scrim closes the sheet.
+- **Completing a task is not a deletion**: finishing the 1 Thing now persists a DONE TODAY state with a New task action; the old 5-second auto-clear is gone.
+- **Completion is explicit**: the check cell (48dp target) toggles done/reopen, swipe right closes, swipe left reopens, and finishing the last step completes the task.
+- **The lamp teaches itself**: the caption above it names both swipe directions, and a drag names the destination as it arms.
+- **Readable on a photo**: white-band metadata raised to AA, LATER statuses use full-strength steel, status-bar icons get a gradient scrim, and the search placeholder no longer rides at 3.8:1.
+- **Device-correct chrome**: clock and date follow the locale and 12/24-hour setting; sheets avoid the status bar and the dock clears the navigation bar.
+- **Fewer dead ends**: focus mode is switchable in Settings, Settings and History have real empty states and the live version number, search sources use board buttons, and the wallpaper picker no longer clips at large font scales.
+- **One material everywhere**: app results, contact and file rows, long-press menus and the default-home gate now use board wells and hairlines; the legacy glass components are removed.
+
 ### v1.4.2 - May 19, 2026
 
 #### Features

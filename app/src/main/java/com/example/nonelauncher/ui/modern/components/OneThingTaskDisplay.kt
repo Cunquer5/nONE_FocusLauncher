@@ -7,144 +7,99 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.model.OneThingTask
-import com.example.nonelauncher.ui.components.GlassContainer
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import com.example.nonelauncher.ui.theme.OrangePrimary
-import dev.chrisbanes.haze.hazeChild
-import kotlinx.coroutines.delay
+import com.example.nonelauncher.ui.theme.Board
+import com.example.nonelauncher.ui.theme.BoardActionButton
+import com.example.nonelauncher.ui.theme.BoardBodyStyle
+import com.example.nonelauncher.ui.theme.BoardCloseButton
+import com.example.nonelauncher.ui.theme.BoardDisplayStyle
+import com.example.nonelauncher.ui.theme.BoardDivider
+import com.example.nonelauncher.ui.theme.BoardLabel
+import com.example.nonelauncher.ui.theme.BoardLabelStyle
+import com.example.nonelauncher.ui.theme.BoardMonoStyle
+import com.example.nonelauncher.ui.theme.BoardPanel
+import com.example.nonelauncher.ui.theme.FlapWordmark
 
 /**
- * 1 Thing display — one glass sheet, same family as the structure editor.
- * Rows ride the single surface bare (nested cards inside a card read as noise);
- * tap or swipe right completes, swipe left on a done step re-opens it.
+ * 1 Thing sheet — the focus as the board's white departure band, steps listed beneath it.
+ * The check toggles completion; swipe right on the band closes the task.
  */
 @Composable
 fun OneThingTaskDisplay(
     task: OneThingTask,
-    onMainTaskCompleted: () -> Unit,
+    onSetMainCompleted: (Boolean) -> Unit,
+    onNewTask: () -> Unit,
     onDismiss: () -> Unit = {},
     onUpdateSubtask: (String, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    val hazeState = HazeGlassMorphism.rememberHazeState()
-    val mainTask = task.mainTask
     val subTasks = task.subTasks
-
-    // Local state to track direct main task completion (when no subtasks)
-    var isMainTaskDirectlyCompleted by remember { mutableStateOf(false) }
-
-    val allSubtasksCompleted by remember(subTasks) {
-        derivedStateOf {
-            subTasks.isNotEmpty() && subTasks.all { it.isCompleted }
-        }
-    }
-
-    val isMainTaskCompleted by remember(subTasks, allSubtasksCompleted, isMainTaskDirectlyCompleted) {
-        derivedStateOf {
-            allSubtasksCompleted || (subTasks.isEmpty() && isMainTaskDirectlyCompleted)
-        }
-    }
-
-    // Opening a sheet that already shows a completed task is not a new completion. Only a
-    // false -> true transition made while the sheet is open reports upward and arms the reset,
-    // so re-opening yesterday's finished task does not delete it a few seconds later.
-    var hasReportedCompletion by remember { mutableStateOf(isMainTaskCompleted) }
-    LaunchedEffect(isMainTaskCompleted) {
-        if (isMainTaskCompleted) {
-            if (!hasReportedCompletion) {
-                hasReportedCompletion = true
-                delay(150)
-                onMainTaskCompleted()
-            }
-        } else {
-            hasReportedCompletion = false
-        }
-    }
-
-    val completeMainTask: () -> Unit = {
-        if (!isMainTaskCompleted) {
-            if (subTasks.isNotEmpty()) {
-                subTasks.forEach { subTask ->
-                    if (!subTask.isCompleted) onUpdateSubtask(subTask.id, true)
-                }
-            } else {
-                // No subtasks — LaunchedEffect on isMainTaskCompleted fires the single completion callback
-                isMainTaskDirectlyCompleted = true
-            }
-        }
-    }
-
+    val isCompleted = task.isMainCompleted
     val doneCount = subTasks.count { it.isCompleted }
+    val view = LocalView.current
 
-    GlassContainer(
-        modifier = modifier,
-        cornerRadius = 32.dp,
-        blurRadius = 22.dp,
-        tintAlpha = 0.55f
-    ) {
+    // Completing the last step finishes the task; the sheet does not have to be told twice.
+    LaunchedEffect(doneCount, subTasks.size, isCompleted) {
+        if (!isCompleted && subTasks.isNotEmpty() && doneCount == subTasks.size) {
+            onSetMainCompleted(true)
+        }
+    }
+
+    val complete: () -> Unit = {
+        if (!isCompleted) {
+            subTasks.forEach { if (!it.isCompleted) onUpdateSubtask(it.id, true) }
+            onSetMainCompleted(true)
+        }
+    }
+
+    val reopen: () -> Unit = {
+        if (isCompleted) {
+            subTasks.forEach { if (it.isCompleted) onUpdateSubtask(it.id, false) }
+            onSetMainCompleted(false)
+        }
+    }
+
+    BoardPanel(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "1 Thing",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .hazeChild(state = hazeState, blurRadius = 8.dp)
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.335f),
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = Color.White.copy(0.8f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                FlapWordmark(text = "1 Thing", cellHeight = 26.dp, fontSize = 13.sp)
+                BoardCloseButton(onClick = onDismiss)
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Main task — the sheet's one focal line; tap or swipe right completes it
+            // White paint band — the focus reads from across the room
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { completeMainTask() }
-                    .pointerInput(isMainTaskCompleted) {
+                    .clip(Board.cell)
+                    .background(Board.Paint)
+                    .pointerInput(isCompleted) {
                         var totalDrag = 0f
                         detectHorizontalDragGestures(
                             onDragEnd = { totalDrag = 0f },
@@ -152,50 +107,67 @@ fun OneThingTaskDisplay(
                             onHorizontalDrag = { _, dragAmount ->
                                 totalDrag += dragAmount
                                 if (totalDrag > 100f) {
-                                    completeMainTask()
+                                    complete()
+                                    totalDrag = 0f
+                                } else if (totalDrag < -100f) {
+                                    reopen()
                                     totalDrag = 0f
                                 }
                             }
                         )
                     }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(start = 12.dp, end = 6.dp, top = 12.dp, bottom = 12.dp)
             ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    BoardLabel(
+                        text = if (isCompleted) "Done today" else "The One Thing",
+                        color = Board.Ink.copy(alpha = 0.62f)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = task.mainTask.uppercase(),
+                        style = BoardDisplayStyle.copy(fontSize = 18.sp, lineHeight = 21.sp),
+                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                        color = if (isCompleted) Board.Ink.copy(alpha = 0.6f) else Board.Ink
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                // 48dp target around the 30dp flap cell
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .border(
-                            width = 3.dp,
-                            color = if (isMainTaskCompleted) OrangePrimary else Color.White,
-                            shape = CircleShape
-                        ),
+                        .size(48.dp)
+                        .clickable {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                            if (isCompleted) reopen() else complete()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isMainTaskCompleted) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Completed",
-                            tint = OrangePrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(Board.cell)
+                            .border(2.dp, if (isCompleted) Board.Action else Board.Ink, Board.cell)
+                            .background(if (isCompleted) Board.Action else Color.Transparent, Board.cell),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isCompleted) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Reopen task",
+                                tint = Board.Ink,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Text(
-                    text = mainTask,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        textDecoration = if (isMainTaskCompleted)
-                            TextDecoration.LineThrough
-                            else TextDecoration.None
-                    ),
-                    color = if (isMainTaskCompleted)
-                        Color.White.copy(alpha = 0.5f)
-                        else Color.White,
-                    modifier = Modifier.weight(1f)
-                )
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            BoardLabel(
+                text = if (isCompleted) "Tap the check or swipe left to reopen"
+                else "Tap the check or swipe right to close",
+                color = Board.Steel
+            )
 
             if (subTasks.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -204,20 +176,15 @@ fun OneThingTaskDisplay(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    BoardLabel(text = "Steps", color = Board.Steel)
                     Text(
-                        text = "Steps",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = OrangePrimary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    Text(
-                        text = "$doneCount/${subTasks.size}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.6f)
+                        text = "%02d/%02d".format(doneCount, subTasks.size),
+                        style = BoardMonoStyle.copy(fontSize = 12.sp),
+                        color = if (isCompleted) Board.Action else Board.PaintDim
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+                BoardDivider()
 
                 LazyColumn(
                     modifier = Modifier
@@ -226,17 +193,17 @@ fun OneThingTaskDisplay(
                 ) {
                     itemsIndexed(subTasks) { index, subTask ->
                         val isSubtaskCompleted = subTask.isCompleted
+                        val isNext = !isSubtaskCompleted &&
+                            subTasks.take(index).all { it.isCompleted }
                         if (index > 0) {
-                            HorizontalDivider(
-                                color = Color.White.copy(alpha = 0.06f),
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            )
+                            BoardDivider(modifier = Modifier.padding(start = 34.dp))
                         }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
+                                .heightIn(min = 48.dp)
+                                .clip(Board.cell)
                                 .clickable { onUpdateSubtask(subTask.id, !isSubtaskCompleted) }
                                 .pointerInput(isSubtaskCompleted) {
                                     var totalDrag = 0f
@@ -255,22 +222,26 @@ fun OneThingTaskDisplay(
                                         }
                                     )
                                 }
-                                .padding(horizontal = 8.dp, vertical = 12.dp)
+                                .padding(horizontal = 6.dp, vertical = 8.dp)
                         ) {
+                            Text(
+                                text = "%02d".format(index + 1),
+                                color = if (isNext) Board.Action else Board.PaintDim,
+                                style = BoardMonoStyle.copy(fontSize = 12.sp),
+                                modifier = Modifier.width(26.dp)
+                            )
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(20.dp)
+                                    .clip(Board.cell)
                                     .border(
-                                        width = 2.dp,
-                                        color = if (isSubtaskCompleted)
-                                            OrangePrimary
-                                        else
-                                            Color.White.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(4.dp)
+                                        width = 1.dp,
+                                        color = if (isSubtaskCompleted) Board.Action else Board.Hair,
+                                        shape = Board.cell
                                     )
                                     .background(
-                                        if (isSubtaskCompleted) OrangePrimary else Color.Transparent,
-                                        RoundedCornerShape(4.dp)
+                                        if (isSubtaskCompleted) Board.Action else Color.Transparent,
+                                        Board.cell
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -278,31 +249,56 @@ fun OneThingTaskDisplay(
                                     Icon(
                                         imageVector = Icons.Default.Check,
                                         contentDescription = "Completed",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
+                                        tint = Board.Ink,
+                                        modifier = Modifier.size(13.dp)
                                     )
                                 }
                             }
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = subTask.text,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontWeight = FontWeight.Medium,
+                                text = subTask.text.uppercase(),
+                                style = BoardBodyStyle.copy(
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isNext) FontWeight.SemiBold else FontWeight.Medium,
                                     textDecoration = if (isSubtaskCompleted)
                                         TextDecoration.LineThrough
                                         else TextDecoration.None
                                 ),
-                                color = if (isSubtaskCompleted)
-                                    Color.White.copy(alpha = 0.5f)
-                                    else Color.White.copy(alpha = 0.9f),
+                                color = when {
+                                    isSubtaskCompleted -> Board.PaintDim
+                                    isNext -> Board.Paint
+                                    else -> Board.Paint.copy(alpha = 0.8f)
+                                },
                                 modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = when {
+                                    isSubtaskCompleted -> "DONE"
+                                    isNext -> "NEXT"
+                                    else -> "—"
+                                },
+                                color = when {
+                                    isSubtaskCompleted -> Board.Steel
+                                    isNext -> Board.Action
+                                    else -> Board.Steel
+                                },
+                                style = BoardLabelStyle.copy(fontSize = 10.sp, letterSpacing = 1.4.sp),
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.widthIn(min = 40.dp)
                             )
                         }
                     }
                 }
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            BoardActionButton(
+                text = "New task",
+                onClick = onNewTask,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

@@ -1,28 +1,28 @@
 package com.example.nonelauncher.ui.modern.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.nonelauncher.ui.components.GlassContainer
-import com.example.nonelauncher.ui.components.GradientGlassMorphismButton
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import dev.chrisbanes.haze.hazeChild
+import androidx.compose.ui.unit.sp
+import com.example.nonelauncher.ui.theme.Board
+import com.example.nonelauncher.ui.theme.BoardActionButton
+import com.example.nonelauncher.ui.theme.BoardBodyStyle
+import com.example.nonelauncher.ui.theme.BoardCloseButton
+import com.example.nonelauncher.ui.theme.BoardLabel
+import com.example.nonelauncher.ui.theme.BoardPanel
+import com.example.nonelauncher.ui.theme.BoardTextField
+import com.example.nonelauncher.ui.theme.FlapWordmark
 
 /**
  * Structure editor sheet: the day as one ordered step per line.
- * Saving restarts the flow at step 1; the current step advances from the home-screen chip.
+ * Saving restarts the flow at step 1; the current step advances from the board rows.
  */
 @Composable
 fun StructureSheet(
@@ -31,80 +31,36 @@ fun StructureSheet(
     onSave: (List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val hazeState = HazeGlassMorphism.rememberHazeState()
     var text by remember { mutableStateOf(steps.joinToString("\n")) }
 
-    GlassContainer(
-        modifier = modifier,
-        cornerRadius = 32.dp,
-        blurRadius = 22.dp,
-        tintAlpha = 0.55f
-    ) {
+    BoardPanel(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Structure",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .hazeChild(state = hazeState, blurRadius = 8.dp)
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.335f),
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = Color.White.copy(0.8f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                FlapWordmark(text = "Structure", cellHeight = 26.dp, fontSize = 13.sp)
+                BoardCloseButton(onClick = onDismiss)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Your day as an ordered flow — one step per line.\nTap the chip at the top of home to move to the next step.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.6f)
+                text = "ONE STEP PER LINE. TAP A ROW ON THE BOARD TO SET THE CURRENT STEP.",
+                style = BoardBodyStyle.copy(fontSize = 11.sp, lineHeight = 15.sp),
+                color = Board.Steel
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            TextField(
+            BoardTextField(
                 value = text,
                 onValueChange = { text = it },
-                placeholder = {
-                    Text(
-                        "Wakeup\nSunlight exposure\nWorkout\nCleanse\nEat\nFree slot\nLunch\n...",
-                        color = Color.White.copy(0.4f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Black.copy(alpha = 0.35f),
-                    unfocusedContainerColor = Color.Black.copy(alpha = 0.35f),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = Color(0xFFFF4D00)
-                ),
-                shape = RoundedCornerShape(16.dp),
+                placeholder = "Wakeup\nSunlight exposure\nWorkout\nCleanse\nEat\nFree slot\nLunch\n...",
+                textStyle = BoardBodyStyle,
                 minLines = 8,
                 maxLines = 14,
                 modifier = Modifier
@@ -112,16 +68,17 @@ fun StructureSheet(
                     .weight(1f, fill = false)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            GradientGlassMorphismButton(
-                onClick = { onSave(text.lines().filter { it.isNotBlank() }) },
+            BoardLabel(
+                text = "${text.lines().count { it.isNotBlank() }} steps",
+                color = Board.Steel
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            BoardActionButton(
                 text = "Save Structure",
-                hazeState = hazeState,
-                glassAlpha = 1.0f,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
+                onClick = { onSave(text.lines().filter { it.isNotBlank() }) },
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

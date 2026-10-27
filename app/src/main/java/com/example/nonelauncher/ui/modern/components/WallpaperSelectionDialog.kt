@@ -1,15 +1,13 @@
 package com.example.nonelauncher.ui.modern.components
 
 import android.app.WallpaperManager
-import android.graphics.Bitmap
-import android.graphics.Color as AndroidColor
 import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -21,16 +19,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.nonelauncher.ui.theme.OrangePrimary
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import com.example.nonelauncher.ui.components.GlassMorphismButton
 import androidx.core.graphics.drawable.toBitmap
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import androidx.compose.foundation.border
+import com.example.nonelauncher.ui.theme.Board
+import com.example.nonelauncher.ui.theme.BoardBodyStyle
+import com.example.nonelauncher.ui.theme.BoardPanel
+import com.example.nonelauncher.ui.theme.BoardQuietButton
+import com.example.nonelauncher.ui.theme.FlapWordmark
 
 /**
  * Wallpaper Selection Dialog for Modern UI
@@ -46,8 +43,7 @@ fun WallpaperSelectionDialog(
 ) {
     val context = LocalContext.current
     val wallpaperManager = WallpaperManager.getInstance(context)
-    val hazeState = HazeGlassMorphism.rememberHazeState()
-    
+
     // Get current wallpaper drawable
     val currentWallpaper = try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -67,139 +63,109 @@ fun WallpaperSelectionDialog(
             usePlatformDefaultWidth = false
         )
     ) {
-        Box(
+        BoardPanel(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .clip(RoundedCornerShape(24.dp))
-                .hazeChild(state = hazeState, blurRadius = 16.dp)
-                .background(Color.Black.copy(alpha = 0.6f))
-                .border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(24.dp)
-                )
-                .padding(24.dp)
+                .fillMaxWidth(0.92f)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Header
-                Text(
-                    text = "Select Wallpaper",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
+                FlapWordmark(text = "Wallpaper", cellHeight = 24.dp, fontSize = 12.sp)
 
-                // Option 1: Default Orange Color
+                Spacer(modifier = Modifier.height(2.dp))
+
                 WallpaperOption(
-                    title = "Default Saturated Orange",
-                    description = "Use the launcher's signature orange color",
-                    backgroundColor = OrangePrimary,
+                    title = "Orange",
+                    description = "The launcher's signature saturated field",
+                    swatch = OrangeSwatch,
+                    preview = null,
                     onClick = {
                         onOrangeColorSelected()
                         onDismiss()
-                    },
-                    hazeState = hazeState
+                    }
                 )
 
-                // Divider
-                HorizontalDivider(
-                    color = Color.White.copy(alpha = 0.1f),
-                    thickness = 1.dp
-                )
-
-                // Option 2: Custom Wallpaper
                 WallpaperOption(
-                    title = "Choose Custom Wallpaper",
-                    description = "Select from your device storage",
-                    backgroundColor = Color(0xFF2A2A2A),
+                    title = "Custom",
+                    description = "Pick an image from your device",
+                    swatch = Board.InkSoft,
                     preview = currentWallpaper,
                     onClick = {
                         onCustomWallpaperClick()
                         onDismiss()
-                    },
-                    hazeState = hazeState
+                    }
                 )
 
-                // Close Button
-                GlassMorphismButton(
-                    onClick = onDismiss,
+                Spacer(modifier = Modifier.height(4.dp))
+
+                BoardQuietButton(
                     text = "Cancel",
-                    hazeState = hazeState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
     }
 }
 
+private val OrangeSwatch = com.example.nonelauncher.ui.theme.Board.Action
+
 /**
- * Individual wallpaper option card
+ * Individual wallpaper option cell
  */
 @Composable
 private fun WallpaperOption(
     title: String,
     description: String,
-    backgroundColor: Color,
-    preview: android.graphics.drawable.Drawable? = null,
-    onClick: () -> Unit,
-    hazeState: HazeState
+    swatch: Color,
+    preview: android.graphics.drawable.Drawable?,
+    onClick: () -> Unit
 ) {
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .hazeChild(state = hazeState, blurRadius = 12.dp)
-            .background(backgroundColor.copy(alpha = 0.3f))
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(16.dp)
-            )
+            .heightIn(min = 84.dp)
+            .clip(Board.cell)
+            .background(Board.InkSoft)
+            .border(1.dp, Board.HairFaint, Board.cell)
             .clickable(onClick = onClick)
-            .padding(16.dp),
-        contentAlignment = Alignment.CenterStart
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.6f)
-                )
-            }
+            Text(
+                text = title.uppercase(),
+                style = BoardBodyStyle.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                color = Board.Paint
+            )
+            Text(
+                text = description,
+                style = BoardBodyStyle.copy(fontSize = 12.sp, lineHeight = 16.sp),
+                color = Board.PaintDim
+            )
+        }
 
-            // Preview swatch: solid fill for the orange option, the live wallpaper for custom
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(backgroundColor)
-            ) {
-                if (preview != null) {
-                    Image(
-                        bitmap = remember(preview) { preview.toBitmap(128, 128).asImageBitmap() },
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+        // Preview swatch: solid fill for the orange option, the live wallpaper for custom
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(Board.cell)
+                .background(swatch)
+                .border(1.dp, Board.Hair, Board.cell)
+        ) {
+            if (preview != null) {
+                Image(
+                    bitmap = remember(preview) { preview.toBitmap(112, 112).asImageBitmap() },
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
         }
     }

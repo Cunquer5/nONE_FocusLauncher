@@ -6,7 +6,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 **nONE FocusLauncher** is a minimalist Android system launcher built with Kotlin and Jetpack Compose. It uses a productivity-focused design with features like grayscale focus mode, intention prompts, and a "1 Thing" task manager. The app targets Android API 28+ and uses modern Android architecture (MVVM).
 
-**Note**: As of v1.4.1, the launcher uses a single Modern UI design with a **Universal Search Bar** (Apps, Contacts, Files) using a swipe-down-to-search pattern. v1.4.2 adds first-launch welcome and optional feedback prompts (local timing only).
+**Note**: As of v1.5.0, the launcher is a single **Departure Board** UI: a matte split-flap home board over the wallpaper with a live clock, the 1 Thing white band, and No./Step/Status structure rows you tap to set the current step. Search (Apps, Contacts, Files) opens from the bottom spindle handle (swipe right); Structure opens with a left swipe; swipe up reveals the dock. The board stays composed under a scrim while a sheet is open, and a completed 1 Thing persists as "Done today" until the user starts a new task.
 
 ## Build & Development Commands
 
@@ -136,8 +136,8 @@ com.example.nonelauncher/
 ## Development Notes
 
 ### Theme & Styling
-- **Brand Color**: Orange `#FF4D00` (`OrangePrimary`) used for active states, wallpaper, checkmarks
-- **Glass Morphism**: Black backgrounds with 0.7f alpha + backdrop blur (see `ui/theme/GlassMorphism.kt`, `AcrylicGlass.kt`)
+- **Brand Color**: Orange `#FF4D00` (`OrangePrimary`) reserved for the single action on a surface and the current row
+- **Board Material**: Matte flap black, steel hairlines, near-square cells, paint lettering, monospace figures (see `ui/theme/Board.kt`)
 - **Material 3**: Custom theme in `ui/theme/Theme.kt` with edge-to-edge support
 - **Wallpaper**: Launcher shows device wallpaper via `FLAG_SHOW_WALLPAPER` in MainActivity
 
@@ -154,7 +154,7 @@ Required permissions in AndroidManifest.xml:
 - `REQUEST_DELETE_PACKAGES`: App uninstall support
 
 ### Version Info
-- **Current Version**: 1.4.2 (versionCode 10)
+- **Current Version**: 1.5.0 (versionCode 11)
 - **Target SDK**: 35 (Android 15)
 - **Min SDK**: 28 (Android 9)
 - **Java Version**: 17

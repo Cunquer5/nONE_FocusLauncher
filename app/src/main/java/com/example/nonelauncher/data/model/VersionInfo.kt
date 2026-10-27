@@ -9,6 +9,25 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.5.0",
+        versionCode = 11,
+        releaseDate = "2026-10-27",
+        features = listOf(
+            "Departure Board redesign: matte split-flap console floating over the wallpaper",
+            "home board with the NONE flap wordmark, a live clock, and the 1 Thing white paint band",
+            "structure as No./Step/Status rows — tap any row to set the current step",
+            "current row carries the orange beam; past rows strike through and dim in place",
+            "board-material dock strip and square spindle handle replace the glass dock and side artifacts",
+            "search, Structure, 1 Thing, settings, history, wallpaper and intention gate rebuilt on the board material",
+            "welcome copy updated to the current gestures: handle left for Structure, right for search, up for the dock",
+            "board stays composed behind a scrim when a sheet opens; tap the scrim to close",
+            "1 Thing completion persists as Done today with a New task action — the 5-second auto-clear is gone",
+            "explicit check targets, resting handle labels, AA metadata, locale-aware clock and 12/24-hour support",
+            "focus mode switch, real Settings/History empty states, and status-bar/navigation-bar safe sheets",
+            "app grid, contact and file rows, long-press menus and the default-home gate use board wells and hairlines — the last glass surfaces are gone"
+        )
+    ),
+    VersionInfo(
         versionName = "1.4.2",
         versionCode = 10,
         releaseDate = "2026-05-19",

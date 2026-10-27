@@ -8,7 +8,10 @@ data class SubTask(
 
 data class OneThingTask(
     val mainTask: String,
-    val subTasks: List<SubTask>
+    val subTasks: List<SubTask>,
+    // A task with no steps has nowhere else to keep "done". Persisted so the board can show a
+    // finished day instead of silently deleting the task the moment it is completed.
+    val isMainCompleted: Boolean = false
 )
 
 fun serializeOneThingTask(task: OneThingTask): String {
@@ -20,7 +23,7 @@ fun serializeOneThingTask(task: OneThingTask): String {
             .replace(",", "\\,")
         "${sub.id},$escapedText,${sub.isCompleted}"
     }
-    return "${task.mainTask}|$subtaskStr"
+    return "${task.mainTask}|$subtaskStr|${if (task.isMainCompleted) 1 else 0}"
 }
 
 fun parseOneThingTaskWithState(serialized: String?): OneThingTask? {
@@ -40,7 +43,11 @@ fun parseOneThingTaskWithState(serialized: String?): OneThingTask? {
         } else null
     }
 
-    return OneThingTask(mainTask, subTasks)
+    return OneThingTask(
+        mainTask = mainTask,
+        subTasks = subTasks,
+        isMainCompleted = parts.getOrNull(2) == "1"
+    )
 }
 
 fun parseOneThingTask(serialized: String?): OneThingTask? {

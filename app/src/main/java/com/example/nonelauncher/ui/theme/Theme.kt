@@ -20,20 +20,20 @@ private val DarkColorScheme = darkColorScheme(
     primary = OrangePrimary,
     //background = OrangePrimary, // App background is orange
     background = Color.Transparent,
-    surface = Black,
+    surface = Board.Ink,
     onPrimary = White,
-    onBackground = White,
-    onSurface = White
+    onBackground = Board.Paint,
+    onSurface = Board.Paint
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = OrangePrimary,
     //background = OrangePrimary, // App background is orange
     background = Color.Transparent,
-    surface = White,
+    surface = Board.Ink,
     onPrimary = White,
-    onBackground = White, // Text on orange should be white usually? Or dark? PRD images show white text on orange.
-    onSurface = Black
+    onBackground = Board.Paint,
+    onSurface = Board.Paint
 )
 
 @Composable

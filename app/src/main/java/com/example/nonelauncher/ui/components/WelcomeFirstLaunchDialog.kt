@@ -2,17 +2,24 @@ package com.example.nonelauncher.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.nonelauncher.ui.theme.Board
+import com.example.nonelauncher.ui.theme.BoardActionButton
+import com.example.nonelauncher.ui.theme.BoardBodyStyle
+import com.example.nonelauncher.ui.theme.BoardLabelStyle
+import com.example.nonelauncher.ui.theme.BoardPanel
+import com.example.nonelauncher.ui.theme.FlapWordmark
 
 @Composable
 fun WelcomeFirstLaunchDialog(
@@ -20,36 +27,42 @@ fun WelcomeFirstLaunchDialog(
     onGetStarted: () -> Unit,
 ) {
     Dialog(onDismissRequest = onGetStarted) {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp,
-        ) {
+        BoardPanel(modifier = Modifier.fillMaxWidth()) {
             Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                FlapWordmark(text = "nONE", cellHeight = 30.dp, fontSize = 16.sp)
+
                 Text(
-                    text = "Welcome to nONE Launcher",
-                    style = MaterialTheme.typography.headlineSmall,
+                    text = "A DAY AS A DEPARTURE BOARD",
+                    color = Board.Steel,
+                    style = BoardLabelStyle
                 )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
                 Text(
                     text = if (isDefaultLauncher) {
-                        "A minimalist home focused on calm and intention. Swipe in from the right to search apps, contacts, and files. Swipe up to reveal the dock."
+                        "Tap a row to set the current step. Set your 1 Thing on the white band. Swipe the handle left for Structure, right for search; swipe up for the dock."
                     } else {
-                        "Thanks for installing. Set nONE as your default Home app to use the launcher, then swipe in from the right to search apps, contacts, and files."
+                        "Thanks for installing. Set nONE as your default Home app, then tap a row to set your step, swipe the handle left for Structure and right for search."
                     },
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = BoardBodyStyle.copy(fontSize = 13.sp),
+                    color = Board.Paint.copy(alpha = 0.85f)
                 )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalAlignment = Alignment.End,
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onGetStarted) {
-                        Text("Get Started")
-                    }
+                    BoardActionButton(
+                        text = "Get Started",
+                        onClick = onGetStarted
+                    )
                 }
             }
         }

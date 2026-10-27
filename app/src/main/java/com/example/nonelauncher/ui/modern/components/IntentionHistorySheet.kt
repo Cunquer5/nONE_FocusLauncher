@@ -5,27 +5,24 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.local.entity.Intention
-import com.example.nonelauncher.ui.theme.OrangePrimary
-import com.example.nonelauncher.ui.components.GlassContainer
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
+import com.example.nonelauncher.ui.theme.Board
+import com.example.nonelauncher.ui.theme.BoardBodyStyle
+import com.example.nonelauncher.ui.theme.BoardCloseButton
+import com.example.nonelauncher.ui.theme.BoardLabel
+import com.example.nonelauncher.ui.theme.BoardLabelStyle
+import com.example.nonelauncher.ui.theme.BoardMonoStyle
+import com.example.nonelauncher.ui.theme.BoardPanel
+import com.example.nonelauncher.ui.theme.FlapWordmark
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -37,7 +34,6 @@ fun IntentionHistorySheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val hazeState = HazeGlassMorphism.rememberHazeState()
     val groupedIntentions = remember(intentions) {
         // Sort groups by their newest entry, descending: comparator-equal day labels can no longer
         // collide in a SortedMap and silently drop older days (the old toSortedMap bug).
@@ -48,82 +44,66 @@ fun IntentionHistorySheet(
         }
     }
 
-    GlassContainer(
-        modifier = modifier.fillMaxSize(),
-        cornerRadius = 32.dp,
-        blurRadius = 22.dp,
-        tintAlpha = 0.55f
-    ) {
+    BoardPanel(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(20.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "Intention History",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Review your focus moments",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
-                }
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .hazeChild(state = hazeState, blurRadius = 8.dp)
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.335f),
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = Color.White.copy(0.8f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                FlapWordmark(text = "History", cellHeight = 26.dp, fontSize = 13.sp)
+                BoardCloseButton(onClick = onDismiss)
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            BoardLabel(text = "Logged intentions, newest first", color = Board.Steel)
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                groupedIntentions.forEach { (dateLabel, intentionsForDate) ->
-                    item {
-                        Text(
-                            dateLabel.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = OrangePrimary,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-                    
-                    items(intentionsForDate) { intention ->
-                        HistoryItem(intention, hazeState)
-                    }
-                    
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
+
+            if (groupedIntentions.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    BoardLabel(text = "Log empty", color = Board.Steel)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Open a distracting app and the gate will ask why. Answers collect here, by day.",
+                        style = BoardBodyStyle.copy(fontSize = 13.sp, lineHeight = 18.sp),
+                        color = Board.PaintDim,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    groupedIntentions.forEach { (dateLabel, intentionsForDate) ->
+                        item {
+                            Text(
+                                text = dateLabel.uppercase(),
+                                color = Board.Steel,
+                                style = BoardLabelStyle.copy(letterSpacing = 2.sp),
+                                modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                            )
+                        }
+
+                        items(intentionsForDate) { intention ->
+                            HistoryItem(intention)
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
                     }
                 }
             }
@@ -132,51 +112,46 @@ fun IntentionHistorySheet(
 }
 
 @Composable
-fun HistoryItem(intention: Intention, hazeState: HazeState) {
-    Box(
+fun HistoryItem(intention: Intention) {
+    val time = remember(intention.timestamp) {
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(intention.timestamp))
+    }
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .hazeChild(state = hazeState, blurRadius = 12.dp)
-            .background(Color.Black.copy(alpha = 0.6f))
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(24.dp)
-            )
-            .padding(16.dp),
+            .clip(Board.cell)
+            .background(Board.InkSoft)
+            .border(1.dp, Board.HairFaint, Board.cell)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color.White.copy(0.1f), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                //Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null, tint = Color.White.copy(0.7f))
-            }
-    
-            Spacer(modifier = Modifier.width(16.dp))
-    
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${intention.appLabel}: ${intention.intentionText}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(0.9f)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                val dateTime = remember(intention.timestamp) {
-                    getFormattedDateTime(Date(intention.timestamp))
-                }
-                Text(
-                    text = dateTime,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(0.4f)
-                )
-            }
+        Text(
+            text = time,
+            style = BoardMonoStyle.copy(fontSize = 12.sp),
+            color = Board.Steel,
+            modifier = Modifier.width(46.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(24.dp)
+                .background(Board.HairFaint)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = intention.appLabel.uppercase(),
+                style = BoardLabelStyle,
+                color = Board.PaintDim
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = intention.intentionText,
+                style = BoardBodyStyle.copy(fontSize = 13.sp),
+                color = Board.Paint,
+                maxLines = 2
+            )
         }
     }
 }
@@ -185,7 +160,7 @@ fun getRelativeDate(timestamp: Date): String {
     val intentionCal = Calendar.getInstance().apply { time = timestamp }
     val todayCal = Calendar.getInstance()
     val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-    
+
     return when {
         isSameDay(intentionCal, todayCal) -> "Today"
         isSameDay(intentionCal, yesterdayCal) -> "Yesterday"
@@ -197,13 +172,13 @@ fun getFormattedDateTime(timestamp: Date): String {
     val intentionCal = Calendar.getInstance().apply { time = timestamp }
     val todayCal = Calendar.getInstance()
     val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-    
+
     return when {
-        isSameDay(intentionCal, todayCal) -> 
+        isSameDay(intentionCal, todayCal) ->
             SimpleDateFormat("h:mm a", Locale.getDefault()).format(timestamp)
-        isSameDay(intentionCal, yesterdayCal) -> 
+        isSameDay(intentionCal, yesterdayCal) ->
             SimpleDateFormat("h:mm a", Locale.getDefault()).format(timestamp)
-        else -> 
+        else ->
             SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(timestamp)
     }
 }

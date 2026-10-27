@@ -1,135 +1,98 @@
 package com.example.nonelauncher.ui.modern.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.model.OneThingTask
 import com.example.nonelauncher.data.model.SubTask
 import com.example.nonelauncher.data.model.serializeOneThingTask
-import com.example.nonelauncher.ui.theme.OrangePrimary
-import com.example.nonelauncher.ui.theme.apiAwareBlur
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import com.example.nonelauncher.ui.components.GlassMorphismButton
-import com.example.nonelauncher.ui.components.GradientGlassMorphismButton
+import com.example.nonelauncher.ui.theme.Board
+import com.example.nonelauncher.ui.theme.BoardActionButton
+import com.example.nonelauncher.ui.theme.BoardBodyStyle
+import com.example.nonelauncher.ui.theme.BoardCloseButton
+import com.example.nonelauncher.ui.theme.BoardLabel
+import com.example.nonelauncher.ui.theme.BoardPanel
+import com.example.nonelauncher.ui.theme.BoardTextField
+import com.example.nonelauncher.ui.theme.FlapWordmark
+import androidx.compose.foundation.text.KeyboardOptions
 
 @Composable
 fun OneThingInputCard(
     onTaskSet: (String) -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var mainTask by remember { mutableStateOf("") }
     var actionStep by remember { mutableStateOf("") }
-    val hazeState = HazeGlassMorphism.rememberHazeState()
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-    ) {
-        // Background with blur effect
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color.Black.copy(alpha = 0.4f))
-                //.apiAwareBlur(15.dp, fallbackAlpha = 0.3f)
-                .border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.25f),
-                    shape = RoundedCornerShape(24.dp)
-                )
-        )
-        
-        // Content layer (stays sharp)
+    val submit: () -> Unit = {
+        if (mainTask.isNotBlank()) {
+            val subTasks = actionStep.split("\n").filter { it.isNotBlank() }
+                .map { SubTask(text = it, isCompleted = false) }
+            onTaskSet(serializeOneThingTask(OneThingTask(mainTask, subTasks)))
+            mainTask = ""
+            actionStep = ""
+        }
+    }
+
+    BoardPanel(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(18.dp)
         ) {
-            // Simplified header
-            Text(
-                "ADD 1 THING",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = 0.7f),
-                fontWeight = FontWeight.Medium
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FlapWordmark(text = "1 Thing", cellHeight = 24.dp, fontSize = 12.sp)
+                BoardCloseButton(onClick = onDismiss)
+            }
 
-            // Single input field for main task
-            TextField(
+            Spacer(modifier = Modifier.height(6.dp))
+            BoardLabel(text = "What must move today?", color = Board.Steel)
+            Spacer(modifier = Modifier.height(14.dp))
+
+            BoardTextField(
                 value = mainTask,
                 onValueChange = { mainTask = it },
-                placeholder = { 
-                    Text("What's your main focus today?", color = Color.White.copy(0.5f)) 
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = OrangePrimary
-                ),
+                placeholder = "Your main focus",
+                textStyle = BoardBodyStyle.copy(fontSize = 16.sp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Optional action step
-            TextField(
+            BoardTextField(
                 value = actionStep,
                 onValueChange = { actionStep = it },
-                placeholder = {
-                    Text("Optional: Specific action step...", color = Color.White.copy(0.5f))
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = OrangePrimary
-                ),
+                placeholder = "First action step\nThen the next one",
+                singleLine = false,
+                minLines = 2,
+                maxLines = 4,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            BoardLabel(text = "One step per line · optional", color = Board.Steel)
 
-            // Button dims until a main task is typed; guard still blocks submit
-            GradientGlassMorphismButton(
-                onClick = {
-                    if (mainTask.isNotBlank()) {
-                        // Create OneThingTask with main task and subtasks
-                        val subTasks = actionStep.split("\n").filter { it.isNotBlank() }
-                            .map { SubTask(text = it, isCompleted = false) }
-                        val oneThingTask = OneThingTask(mainTask, subTasks)
-                        onTaskSet(serializeOneThingTask(oneThingTask))
-                        mainTask = ""
-                        actionStep = ""
-                    }
-                },
+            Spacer(modifier = Modifier.height(14.dp))
+
+            BoardActionButton(
                 text = "Set Focus Task",
-                hazeState = hazeState,
-                glassAlpha = 1.0f,  // fully opaque glass
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .graphicsLayer {
-                        alpha = if (mainTask.isBlank()) 0.35f else 1f
-                    }
-
+                enabled = mainTask.isNotBlank(),
+                onClick = submit,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

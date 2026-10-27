@@ -7,25 +7,28 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Wallpaper
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.local.entity.Intention
-import com.example.nonelauncher.ui.theme.OrangePrimary
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
+import com.example.nonelauncher.data.model.Changelog
+import com.example.nonelauncher.ui.theme.Board
+import com.example.nonelauncher.ui.theme.BoardActionButton
+import com.example.nonelauncher.ui.theme.BoardBodyStyle
+import com.example.nonelauncher.ui.theme.BoardDivider
+import com.example.nonelauncher.ui.theme.BoardLabel
+import com.example.nonelauncher.ui.theme.BoardLabelStyle
+import com.example.nonelauncher.ui.theme.BoardMonoStyle
+import com.example.nonelauncher.ui.theme.BoardPanel
+import com.example.nonelauncher.ui.theme.BoardQuietButton
+import com.example.nonelauncher.ui.theme.FlapWordmark
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -34,142 +37,149 @@ fun SettingsSheet(
     recentIntentions: List<Intention>,
     onWallpaperClick: () -> Unit,
     onHistoryClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    focusModeEnabled: Boolean = false,
+    onToggleFocusMode: (Boolean) -> Unit = {}
 ) {
-    val hazeState = HazeGlassMorphism.rememberHazeState()
+    BoardPanel(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Column {
+                FlapWordmark(text = "Settings", cellHeight = 26.dp, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                BoardLabel(text = "Launcher control", color = Board.Steel)
+            }
 
-    Card(
-        modifier = modifier.fillMaxSize(),
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Background blur layer
-            Box(
+            // Focus mode is the app's core switch and was missing from settings entirely.
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .haze(state = hazeState, backgroundColor = Color.Transparent)
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .clip(Board.cell)
+                    .background(Board.InkSoft)
+                    .border(1.dp, Board.HairFaint, Board.cell)
+                    .clickable { onToggleFocusMode(!focusModeEnabled) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "nONE FOCUS MODE",
+                        color = Board.Paint,
+                        style = BoardLabelStyle
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Grayscale everything that is not essential",
+                        color = Board.Steel,
+                        style = BoardBodyStyle.copy(fontSize = 12.sp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                TrackSwitch(on = focusModeEnabled)
+            }
+
+            BoardActionButton(
+                text = "Wallpaper Selection",
+                onClick = onWallpaperClick,
+                modifier = Modifier.fillMaxWidth()
             )
 
-            // Glass surface + content
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(32.dp))
-                    .hazeChild(state = hazeState, blurRadius = 16.dp)
-                    .background(Color.Black.copy(alpha = 0.46f))
-                    .border(
-                        width = 1.dp,
-                        color = Color.White.copy(alpha = 0.25f),
-                        shape = RoundedCornerShape(32.dp)
-                    )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Header
-                    Column {
-                        Text(
-                            text = "Launcher Settings",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Customize your minimalist experience",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.5f)
-                        )
-                    }
-
-                    // Wallpaper button
-                    Button(
-                        onClick = onWallpaperClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
+                    BoardLabel(text = "Intentions Log", color = Board.Paint)
+                    BoardQuietButton(
+                        text = "History",
+                        onClick = onHistoryClick,
+                        modifier = Modifier.widthIn(min = 104.dp)
+                    )
+                }
+                BoardDivider()
+                if (recentIntentions.isEmpty()) {
+                    Text(
+                        text = "No intentions logged yet. When you open a distracting app, the gate asks why — the answer lands here.",
+                        color = Board.PaintDim,
+                        style = BoardBodyStyle.copy(fontSize = 13.sp, lineHeight = 18.sp),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 220.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.Default.Wallpaper, contentDescription = null, tint = Color.White)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Wallpaper Selection",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    // Intentions log
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Intentions Log",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "HISTORY",
-                                color = OrangePrimary,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.clickable { onHistoryClick() }
-                            )
-                        }
-
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 200.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(recentIntentions) { intention ->
-                                IntentionCard(intention, hazeState)
-                            }
+                        items(recentIntentions) { intention ->
+                            IntentionCard(intention)
                         }
                     }
                 }
             }
+
+            BoardDivider()
+            BoardLabel(
+                text = "nONE Focus Launcher · v${Changelog.first().versionName}",
+                color = Board.Steel
+            )
         }
     }
 }
 
+/** Board-language switch: a squared track, no Material thumb shadow. */
 @Composable
-fun IntentionCard(intention: Intention, hazeState: HazeState) {
+private fun TrackSwitch(on: Boolean) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .hazeChild(state = hazeState, blurRadius = 12.dp)
-            .background(Color.Black.copy(alpha = 0.6f))
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .padding(16.dp)
+            .size(width = 44.dp, height = 26.dp)
+            .clip(Board.cell)
+            .background(if (on) Board.Action else Board.Well)
+            .border(1.dp, if (on) Board.Action else Board.Hair, Board.cell),
+        contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart
     ) {
-        Column {
+        Box(
+            modifier = Modifier
+                .padding(3.dp)
+                .size(18.dp)
+                .clip(Board.cell)
+                .background(if (on) Board.Ink else Board.Steel)
+        )
+    }
+}
+
+@Composable
+fun IntentionCard(intention: Intention) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(Board.cell)
+            .background(Board.InkSoft)
+            .border(1.dp, Board.HairFaint, Board.cell)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${intention.appLabel}: ${intention.intentionText}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(0.9f),
-                fontWeight = FontWeight.Medium
+                text = "${intention.appLabel.uppercase()} — ${intention.intentionText}",
+                style = BoardBodyStyle.copy(fontSize = 13.sp),
+                color = Board.Paint,
+                maxLines = 2
             )
             Spacer(modifier = Modifier.height(4.dp))
             val date = remember(intention.timestamp) {
-                SimpleDateFormat("'Today', h:mm a", Locale.getDefault()).format(intention.timestamp)
+                SimpleDateFormat("HH:mm", Locale.getDefault()).format(intention.timestamp)
             }
             Text(
                 text = date,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(0.4f)
+                style = BoardMonoStyle.copy(fontSize = 11.sp),
+                color = Board.Steel
             )
         }
     }

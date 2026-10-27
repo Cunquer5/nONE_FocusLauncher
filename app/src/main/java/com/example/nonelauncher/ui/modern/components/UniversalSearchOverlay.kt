@@ -9,8 +9,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -49,17 +47,23 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.ui.theme.OrangePrimary
-import com.example.nonelauncher.ui.theme.SquircleShapes
 import com.example.nonelauncher.ui.theme.bottomEnter
 import com.example.nonelauncher.ui.theme.bottomExit
-import com.example.nonelauncher.ui.theme.glassPress
+import com.example.nonelauncher.ui.theme.boardPress
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.data.model.ContactModel
 import com.example.nonelauncher.data.model.FileModel
 import com.example.nonelauncher.data.repository.FileRepository
 import com.example.nonelauncher.ui.components.AppIcon
-import com.example.nonelauncher.ui.components.GlassContainer
+import com.example.nonelauncher.ui.theme.Board
+import com.example.nonelauncher.ui.theme.BoardBodyStyle
+import com.example.nonelauncher.ui.theme.BoardCloseButton
+import com.example.nonelauncher.ui.theme.BoardDivider
+import com.example.nonelauncher.ui.theme.BoardLabel
+import com.example.nonelauncher.ui.theme.BoardPanel
+import com.example.nonelauncher.ui.theme.BoardQuietButton
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -77,7 +81,7 @@ import android.util.Log
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Search as a floating glass card above the wallpaper, the same family as the structure editor.
+ * Search as a floating board card above the wallpaper, the same material as the structure editor.
  * Shown by the right-edge artifact, a rightward swipe on the collapsed-dock handle, or Back.
  * Automatically focuses the search field when visible.
  */
@@ -278,7 +282,7 @@ fun UniversalSearchOverlay(
 
         Box(modifier = Modifier.fillMaxSize()) {
             // Outside the card: tap or swipe left to put search away. The card registers its own
-            // pointer node, so presses on its glass never reach this layer.
+            // pointer node, so presses on its sheet never reach this layer.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -301,17 +305,18 @@ fun UniversalSearchOverlay(
                     }
             )
 
-            // Floating glass card — 32dp corners, 8dp side margins, parked a dock-height above the
-            // bottom edge (the gap collapses when the keyboard is up so the field stays in reach).
-            GlassContainer(
+            // Floating board card — square corners, steel hairline, parked a dock-height above
+            // the bottom edge (the gap collapses when the keyboard is up so the field stays in reach).
+            BoardPanel(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = bottomPad)
                     .padding(horizontal = 8.dp)
                     .fillMaxWidth()
                     .fillMaxHeight(0.8f)
+                    .statusBarsPadding()
                     .semantics { paneTitle = "Search apps, contacts, files" }
-                    // Register a hit target over the glass so presses on the card do not fall
+                    // Register a hit target over the sheet so presses on the card do not fall
                     // through to the dismiss layer behind it.
                     .pointerInput(Unit) {
                         detectTapGestures { }
@@ -327,10 +332,7 @@ fun UniversalSearchOverlay(
                                 total = 0f
                             }
                         )
-                    },
-                cornerRadius = 32.dp,
-                blurRadius = 22.dp,
-                tintAlpha = 0.55f
+                    }
             ) {
                 Column(
                     modifier = Modifier
@@ -350,14 +352,14 @@ fun UniversalSearchOverlay(
                                 onSearchQueryChange(it)
                             },
                             placeholder = {
-                                Text("Search apps, contacts, files...", color = Color.White.copy(alpha = 0.65f))
+                                Text("Search apps, contacts, files...", color = Board.Steel, style = BoardBodyStyle)
                             },
                             leadingIcon = {
                                 // Decorative — the placeholder already labels the field for TalkBack.
                                 Icon(
                                     Icons.Default.Search,
                                     contentDescription = null,
-                                    tint = Color.White.copy(0.7f)
+                                    tint = Board.Steel
                                 )
                             },
                             trailingIcon = {
@@ -369,24 +371,25 @@ fun UniversalSearchOverlay(
                                         Icon(
                                             Icons.Default.Close,
                                             contentDescription = "Clear",
-                                            tint = Color.White.copy(0.7f)
+                                            tint = Board.Paint
                                         )
                                     }
                                 }
                             },
+                            textStyle = BoardBodyStyle.copy(color = Board.Paint),
                             colors = TextFieldDefaults.colors(
-                                // Same field as the structure editor: a quiet well on the glass
-                                focusedContainerColor = Color.Black.copy(alpha = 0.35f),
-                                unfocusedContainerColor = Color.Black.copy(alpha = 0.35f),
+                                // A recessed flap well on the board, not a floating pill
+                                focusedContainerColor = Board.Well,
+                                unfocusedContainerColor = Board.Well,
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
+                                focusedTextColor = Board.Paint,
+                                unfocusedTextColor = Board.Paint,
                                 cursorColor = OrangePrimary
                             ),
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(Board.cell)
                                 .focusRequester(focusRequester),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { launchTopResult() }),
@@ -395,27 +398,9 @@ fun UniversalSearchOverlay(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Same circular close as the structure sheet. It clears the query; a press
+                        // Same square close cell as every board sheet. It clears the query; a press
                         // outside the card only hides search and keeps the typed text.
-                        IconButton(
-                            onClick = onCancel,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.5f))
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.White.copy(alpha = 0.335f),
-                                    shape = CircleShape
-                                )
-                        ) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Close search",
-                                tint = Color.White.copy(0.8f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        BoardCloseButton(onClick = onCancel)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -427,7 +412,7 @@ fun UniversalSearchOverlay(
                                 .fillMaxWidth()
                                 .height(2.dp),
                             color = OrangePrimary,
-                            trackColor = Color.White.copy(alpha = 0.08f)
+                            trackColor = Board.HairFaint
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
@@ -463,6 +448,24 @@ fun UniversalSearchOverlay(
                                     )
                                 }
                             }
+                        } else if (apps.isNotEmpty()) {
+                            // Nothing pinned yet: the card still opens onto something tappable
+                            // instead of a bare instruction line.
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(bottom = 16.dp)
+                            ) {
+                                SearchSectionHeader("All apps")
+                                AppsGrid(
+                                    apps = apps.take(16),
+                                    onAppClick = onAppClick,
+                                    onTogglePinned = onTogglePinned,
+                                    focusModeEnabled = focusModeEnabled
+                                )
+                            }
                         } else {
                             Box(
                                 modifier = Modifier
@@ -472,9 +475,8 @@ fun UniversalSearchOverlay(
                             ) {
                                 Text(
                                     text = "Type to search",
-                                    color = Color.White.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
+                                    color = Board.PaintDim,
+                                    style = BoardBodyStyle
                                 )
                             }
                         }
@@ -489,7 +491,7 @@ fun UniversalSearchOverlay(
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
                             // Results flow as cardless rows grouped by floating labels —
-                            // headers scroll with the list; nothing occludes on the glass
+                            // headers scroll with the list; nothing occludes on the sheet
 
                             // Apps Section
                             if (filteredApps.isNotEmpty()) {
@@ -542,17 +544,17 @@ fun UniversalSearchOverlay(
                                     ) {
                                         Text(
                                             text = "No matches for \"$query\"",
-                                            color = Color.White.copy(alpha = 0.85f),
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Medium
+                                            color = Board.Paint,
+                                            style = BoardBodyStyle,
+                                            fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = if (missingPermissions)
                                                 "Try fewer letters, or add contacts and files to results."
                                             else
                                                 "Try fewer letters, or check the spelling.",
-                                            color = Color.White.copy(alpha = 0.55f),
-                                            style = MaterialTheme.typography.bodyMedium
+                                            color = Board.PaintDim,
+                                            style = BoardBodyStyle.copy(fontSize = 13.sp, lineHeight = 18.sp)
                                         )
                                         if (missingPermissions) {
                                             AddSourcesRow(
@@ -584,16 +586,14 @@ fun UniversalSearchOverlay(
 
 @Composable
 private fun SearchSectionHeader(title: String) {
-    // No backdrop — the label floats on the glass panel; a band here always read as an artifact
-    Text(
-        text = title,
-        color = OrangePrimary,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 4.dp)
-    )
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp)) {
+        BoardLabel(
+            text = title,
+            color = Board.Steel,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+        )
+        BoardDivider(color = Board.HairFaint)
+    }
 }
 
 @Composable
@@ -606,14 +606,18 @@ private fun AddSourcesRow(
     if (!missingContacts && !missingFiles) return
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (missingContacts) {
-            TextButton(onClick = onAddContacts) {
-                Text("Add contacts to results", color = OrangePrimary)
-            }
+            BoardQuietButton(
+                text = "Add contacts",
+                onClick = onAddContacts,
+                modifier = Modifier.weight(1f)
+            )
         }
         if (missingFiles) {
-            TextButton(onClick = onAddFiles) {
-                Text("Add files to results", color = OrangePrimary)
-            }
+            BoardQuietButton(
+                text = "Add files",
+                onClick = onAddFiles,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -690,8 +694,8 @@ private fun AppResultRow(
     val view = LocalView.current
     var showMenu by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
-    val rowShape = RoundedCornerShape(16.dp)
-    val iconShape = SquircleShapes.squircle(44.dp)
+    val rowShape = Board.cell
+    val iconShape = Board.cell
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -707,17 +711,16 @@ private fun AppResultRow(
                 },
                 onLongClick = { showMenu = true }
             )
-            .glassPress(interactionSource, rowShape)
+            .boardPress(interactionSource, rowShape)
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        // Same icon well as the launcher grid, static (no hazeChild): 16 blurred wells
-        // recomputing during fling is the one place this surface would drop frames
+        // Icon well sits on the board like every other cell: opaque, hairline, no blur
         Box(
             modifier = Modifier
                 .size(44.dp)
                 .clip(iconShape)
-                .background(Color.Black.copy(alpha = 0.35f))
-                .border(1.dp, Color.White.copy(alpha = 0.08f), iconShape)
+                .background(Board.Well)
+                .border(1.dp, Board.Hair, iconShape)
         ) {
             Image(
                 bitmap = app.icon,
@@ -731,8 +734,8 @@ private fun AppResultRow(
         Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = highlightMatch(app.label, query),
-            color = Color.White,
-            style = MaterialTheme.typography.bodyLarge,
+            color = Board.Paint,
+            style = BoardBodyStyle,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -741,10 +744,10 @@ private fun AppResultRow(
         DropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
-            modifier = Modifier.background(Color.Black.copy(alpha = 0.7f))
+            modifier = Modifier.background(Board.Flap)
         ) {
             DropdownMenuItem(
-                text = { Text("App Info", color = Color.White) },
+                text = { Text("App Info", color = Board.Paint, style = BoardBodyStyle) },
                 onClick = {
                     showMenu = false
                     try {
@@ -761,10 +764,11 @@ private fun AppResultRow(
             )
             DropdownMenuItem(
                 text = {
-                    Text(
-                        if (app.isPinned) "Remove from Essentials" else "Add to Essentials",
-                        color = Color.White
-                    )
+                        Text(
+                            if (app.isPinned) "Remove from Essentials" else "Add to Essentials",
+                            color = Board.Paint,
+                            style = BoardBodyStyle
+                        )
                 },
                 onClick = {
                     showMenu = false
@@ -773,7 +777,7 @@ private fun AppResultRow(
             )
             if (app.isUninstallable) {
                 DropdownMenuItem(
-                    text = { Text("Uninstall", color = Color.White) },
+                    text = { Text("Uninstall", color = Board.Paint, style = BoardBodyStyle) },
                     onClick = {
                         showMenu = false
                         try {
@@ -799,44 +803,47 @@ private fun highlightMatch(text: String, query: String): AnnotatedString {
     val idx = if (q.isEmpty()) -1 else text.indexOf(q, ignoreCase = true)
     if (idx < 0) return AnnotatedString(text)
     return buildAnnotatedString {
-        withStyle(SpanStyle(color = Color.White.copy(alpha = 0.8f))) { append(text.substring(0, idx)) }
+        withStyle(SpanStyle(color = Board.Paint.copy(alpha = 0.85f))) { append(text.substring(0, idx)) }
         withStyle(SpanStyle(color = OrangePrimary, fontWeight = FontWeight.Bold)) { append(text.substring(idx, idx + q.length)) }
-        withStyle(SpanStyle(color = Color.White.copy(alpha = 0.8f))) { append(text.substring(idx + q.length)) }
+        withStyle(SpanStyle(color = Board.Paint.copy(alpha = 0.85f))) { append(text.substring(idx + q.length)) }
     }
 }
 
 @Composable
 private fun ContactItem(contact: ContactModel, query: String, onClick: (ContactModel) -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
-    val rowShape = RoundedCornerShape(16.dp)
+    val rowShape = Board.cell
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(rowShape)
             .clickable(interactionSource = interactionSource, indication = null) { onClick(contact) }
-            .glassPress(interactionSource, rowShape)
+            .boardPress(interactionSource, rowShape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.1f)),
+                .clip(Board.cell)
+                .background(Board.Well)
+                .border(1.dp, Board.Hair, Board.cell),
             contentAlignment = Alignment.Center
         ) {
             if (contact.photo != null) {
                 Image(
                     bitmap = contact.photo,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(Board.cell),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Icon(
                     Icons.Default.Person,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.7f),
+                    tint = Board.Steel,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -845,8 +852,8 @@ private fun ContactItem(contact: ContactModel, query: String, onClick: (ContactM
         Column {
             Text(
                 text = highlightMatch(contact.name, query),
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge,
+                color = Board.Paint,
+                style = BoardBodyStyle,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -854,8 +861,8 @@ private fun ContactItem(contact: ContactModel, query: String, onClick: (ContactM
             if (contact.phoneNumber != null) {
                 Text(
                     text = contact.phoneNumber,
-                    color = Color.White.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.bodySmall
+                    color = Board.Steel,
+                    style = BoardBodyStyle.copy(fontSize = 12.sp)
                 )
             }
         }
@@ -865,17 +872,17 @@ private fun ContactItem(contact: ContactModel, query: String, onClick: (ContactM
 @Composable
 private fun FileItem(file: FileModel, query: String, onClick: (FileModel) -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
-    val rowShape = RoundedCornerShape(16.dp)
+    val rowShape = Board.cell
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(rowShape)
             .clickable(interactionSource = interactionSource, indication = null) { onClick(file) }
-            .glassPress(interactionSource, rowShape)
+            .boardPress(interactionSource, rowShape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Bare line glyph on the glass — a tinted well behind a line icon reads as a drop
+        // Bare line glyph on the board — a tinted well behind a line icon reads as a drop
         // shadow square. Same 44dp slot keeps the column rhythm with app and contact rows.
         Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
             DocumentGlyph(modifier = Modifier.size(24.dp))
@@ -884,8 +891,8 @@ private fun FileItem(file: FileModel, query: String, onClick: (FileModel) -> Uni
         Column {
             Text(
                 text = highlightMatch(file.name, query),
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge,
+                color = Board.Paint,
+                style = BoardBodyStyle,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -895,8 +902,8 @@ private fun FileItem(file: FileModel, query: String, onClick: (FileModel) -> Uni
             val sizeText = if (kb >= 1024) "${kb / 1024} MB" else "$kb KB"
             Text(
                 text = if (ext.isNotEmpty()) "$ext · $sizeText" else sizeText,
-                color = Color.White.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.bodySmall
+                color = Board.Steel,
+                style = BoardBodyStyle.copy(fontSize = 12.sp)
             )
         }
     }
@@ -932,7 +939,7 @@ private fun DocumentGlyph(modifier: Modifier = Modifier) {
         }
         drawPath(
             body,
-            Color.White.copy(alpha = 0.8f),
+            Board.Paint.copy(alpha = 0.8f),
             style = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
 
@@ -943,7 +950,7 @@ private fun DocumentGlyph(modifier: Modifier = Modifier) {
         }
         drawPath(
             corner,
-            Color.White.copy(alpha = 0.45f),
+            Board.Paint.copy(alpha = 0.45f),
             style = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
     }
