@@ -65,12 +65,22 @@ The app follows a strict MVVM architecture:
 As of v1.4.1, the launcher uses a **single Modern UI** design with a **Universal Search Bar**.
 
 **MODERN Mode** (`ui/modern/ModernHomeScreen.kt`):
-   - Black glass morphism design with backdrop blur
+   - Liquid glass over the device's own wallpaper, which is drawn inside the composition
+     (`ui/theme/WallpaperBackground.kt`) so Haze has a real source to blur
    - Orange (#FF4D00) brand accent for active states
    - Integrated dock navigation (Apps, 1 Thing, Settings)
    - Widget support with AppWidgetHost
    - Swipe-down-to-search app discovery pattern (replaces traditional app grid)
    - Advanced features: intention history, wallpaper selection, mode selector (Normal/Focus/Blur)
+
+**Glass**: `ui/theme/LiquidGlass.kt` is the only glass material — `LiquidGlassStyle` (Thin / Regular /
+Heavy / Control / Seat) applied with `Modifier.liquidGlass(hazeState, shape, style)`. The shared
+`HazeState` is created in `LauncherScreen`, attached to the wallpaper and provided as
+`LocalHazeState`; never create a second one. Modal overlays (intention, wallpaper, welcome, feedback)
+are composed in the home window, not as `Dialog` windows, so their glass can sample that source.
+Surfaces resting *on* glass pass `sampling = false` (tint, sheen and rim without a second backdrop
+pass); the dial seats are always non-sampling because the wheel redraws every dragged frame and
+blurred children left ghost layers behind on retract.
 
 ### Data Flow Architecture
 
@@ -137,9 +147,15 @@ com.example.nonelauncher/
 
 ### Theme & Styling
 - **Brand Color**: Orange `#FF4D00` (`OrangePrimary`) used for active states, wallpaper, checkmarks
-- **Glass Morphism**: Black backgrounds with 0.7f alpha + backdrop blur (see `ui/theme/GlassMorphism.kt`, `AcrylicGlass.kt`)
+- **Liquid Glass**: One material in `ui/theme/LiquidGlass.kt` — Haze blur of the wallpaper, `#0A0A0B`
+  tint, radial sheen, 1dp specular rim, optional shadow. No other glass utilities.
 - **Material 3**: Custom theme in `ui/theme/Theme.kt` with edge-to-edge support
-- **Wallpaper**: Launcher shows device wallpaper via `FLAG_SHOW_WALLPAPER` in MainActivity
+- **Wallpaper**: Drawn by `ui/theme/WallpaperBackground.kt` inside the composition and used as the Haze
+  source. Reading the static wallpaper needs photo access (`READ_MEDIA_IMAGES` on 13/14, all-files on
+  newer), asked once from the welcome dialog and passed to `WallpaperBackground` as `refreshKey` on grant;
+  refreshes on `ACTION_WALLPAPER_CHANGED` (registered `RECEIVER_EXPORTED`, since the system sends it) and
+  on resume. Until the bitmap is readable the window stays transparent with `FLAG_SHOW_WALLPAPER`, so the
+  system's own wallpaper shows behind the tree — no painted fallback ground.
 
 ### Testing
 - **Unit Tests**: JUnit 4, Mockito Kotlin, Coroutines Test
@@ -171,7 +187,7 @@ Required permissions in AndroidManifest.xml:
 ### Adding a New Feature to Modern UI
 1. Check if feature requires new preference → add to `UserPreferencesRepository`
 2. Update `HomeViewModel.uiState` to include new state in `HomeUiState` data class
-3. Add UI component to `ui/modern/components/` following glass morphism pattern
+3. Add UI component to `ui/modern/components/` using `LocalHazeState` / `liquidGlass` (or `LiquidGlassPanel`); pass `sampling = false` for anything resting on existing glass
 4. Wire up component in `ModernHomeScreen.kt` with appropriate state observers
 
 ### Modifying App List Behavior

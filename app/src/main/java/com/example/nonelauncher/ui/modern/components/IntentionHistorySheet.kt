@@ -20,12 +20,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.local.entity.Intention
+import com.example.nonelauncher.ui.theme.GlassIconButton
+import com.example.nonelauncher.ui.theme.LiquidGlassStyle
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.components.GlassContainer
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
+import com.example.nonelauncher.ui.theme.liquidGlass
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -37,7 +36,6 @@ fun IntentionHistorySheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val hazeState = HazeGlassMorphism.rememberHazeState()
     val groupedIntentions = remember(intentions) {
         // Sort groups by their newest entry, descending: comparator-equal day labels can no longer
         // collide in a SortedMap and silently drop older days (the old toSortedMap bug).
@@ -78,19 +76,7 @@ fun IntentionHistorySheet(
                         color = Color.White.copy(alpha = 0.5f)
                     )
                 }
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .hazeChild(state = hazeState, blurRadius = 8.dp)
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.335f),
-                            shape = CircleShape
-                        )
-                ) {
+                GlassIconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Close",
@@ -119,7 +105,7 @@ fun IntentionHistorySheet(
                     }
                     
                     items(intentionsForDate) { intention ->
-                        HistoryItem(intention, hazeState)
+                        HistoryItem(intention)
                     }
                     
                     item {
@@ -132,17 +118,21 @@ fun IntentionHistorySheet(
 }
 
 @Composable
-fun HistoryItem(intention: Intention, hazeState: HazeState) {
+fun HistoryItem(intention: Intention) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .hazeChild(state = hazeState, blurRadius = 12.dp)
-            .background(Color.Black.copy(alpha = 0.6f))
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(24.dp)
+            // Rows sit on the sheet's glass; tint only, no second backdrop pass.
+            .liquidGlass(
+                hazeState = null,
+                shape = RoundedCornerShape(24.dp),
+                style = LiquidGlassStyle.Thin.copy(
+                    tint = Color(0xFF0A0A0B).copy(alpha = 0.42f),
+                    rimAlpha = 0.14f,
+                    sheenAlpha = 0.03f,
+                    shadowElevation = 0.dp,
+                ),
+                sampling = false,
             )
             .padding(16.dp),
     ) {

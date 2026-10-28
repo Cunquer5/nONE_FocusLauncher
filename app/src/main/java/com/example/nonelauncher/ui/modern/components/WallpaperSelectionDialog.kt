@@ -1,12 +1,13 @@
 package com.example.nonelauncher.ui.modern.components
 
 import android.app.WallpaperManager
-import android.graphics.Bitmap
-import android.graphics.Color as AndroidColor
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,26 +18,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import com.example.nonelauncher.ui.theme.OrangePrimary
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import com.example.nonelauncher.ui.components.GlassMorphismButton
 import androidx.core.graphics.drawable.toBitmap
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import androidx.compose.foundation.border
+import com.example.nonelauncher.ui.components.GlassMorphismButton
+import com.example.nonelauncher.ui.theme.LiquidGlassPanel
+import com.example.nonelauncher.ui.theme.LiquidGlassStyle
+import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.theme.liquidGlass
 
 /**
- * Wallpaper Selection Dialog for Modern UI
- * Provides options for:
- * 1. Default saturated orange color
- * 2. System wallpaper picker for custom selection
+ * Wallpaper selection, drawn in the home window like the intention gate so its glass samples
+ * the same wallpaper source as every other surface.
  */
 @Composable
 fun WallpaperSelectionDialog(
@@ -46,9 +42,7 @@ fun WallpaperSelectionDialog(
 ) {
     val context = LocalContext.current
     val wallpaperManager = WallpaperManager.getInstance(context)
-    val hazeState = HazeGlassMorphism.rememberHazeState()
-    
-    // Get current wallpaper drawable
+
     val currentWallpaper = try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             wallpaperManager.drawable
@@ -59,39 +53,44 @@ fun WallpaperSelectionDialog(
         null
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false
-        )
-    ) {
+    BackHandler { onDismiss() }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .clip(RoundedCornerShape(24.dp))
-                .hazeChild(state = hazeState, blurRadius = 16.dp)
-                .background(Color.Black.copy(alpha = 0.6f))
-                .border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(24.dp)
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.32f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
                 )
-                .padding(24.dp)
+        )
+
+        LiquidGlassPanel(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.9f)
+                // Keep taps on the panel from reaching the dismissing scrim behind it.
+                .pointerInput(Unit) { detectTapGestures { } },
+            shape = RoundedCornerShape(28.dp),
+            style = LiquidGlassStyle.Heavy.copy(
+                blurRadius = 26.dp,
+                tint = Color(0xFF0A0A0B).copy(alpha = 0.52f),
+            ),
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Header
                 Text(
                     text = "Select Wallpaper",
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = Color.White
                 )
 
-                // Option 1: Default Orange Color
                 WallpaperOption(
                     title = "Default Saturated Orange",
                     description = "Use the launcher's signature orange color",
@@ -99,17 +98,14 @@ fun WallpaperSelectionDialog(
                     onClick = {
                         onOrangeColorSelected()
                         onDismiss()
-                    },
-                    hazeState = hazeState
+                    }
                 )
 
-                // Divider
                 HorizontalDivider(
                     color = Color.White.copy(alpha = 0.1f),
                     thickness = 1.dp
                 )
 
-                // Option 2: Custom Wallpaper
                 WallpaperOption(
                     title = "Choose Custom Wallpaper",
                     description = "Select from your device storage",
@@ -118,15 +114,12 @@ fun WallpaperSelectionDialog(
                     onClick = {
                         onCustomWallpaperClick()
                         onDismiss()
-                    },
-                    hazeState = hazeState
+                    }
                 )
 
-                // Close Button
                 GlassMorphismButton(
                     onClick = onDismiss,
                     text = "Cancel",
-                    hazeState = hazeState,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
@@ -146,19 +139,22 @@ private fun WallpaperOption(
     backgroundColor: Color,
     preview: android.graphics.drawable.Drawable? = null,
     onClick: () -> Unit,
-    hazeState: HazeState
 ) {
+    val shape = RoundedCornerShape(16.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .hazeChild(state = hazeState, blurRadius = 12.dp)
-            .background(backgroundColor.copy(alpha = 0.3f))
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(16.dp)
+            .height(112.dp)
+            .liquidGlass(
+                hazeState = null,
+                shape = shape,
+                style = LiquidGlassStyle.Thin.copy(
+                    tint = Color(0xFF0A0A0B).copy(alpha = 0.38f),
+                    rimAlpha = 0.14f,
+                    sheenAlpha = 0.03f,
+                    shadowElevation = 0.dp,
+                ),
+                sampling = false,
             )
             .clickable(onClick = onClick)
             .padding(16.dp),

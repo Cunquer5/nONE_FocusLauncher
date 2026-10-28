@@ -24,9 +24,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.example.nonelauncher.data.model.OneThingTask
 import com.example.nonelauncher.ui.components.GlassContainer
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import com.example.nonelauncher.ui.theme.GlassIconButton
 import com.example.nonelauncher.ui.theme.OrangePrimary
-import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.delay
 
 /**
@@ -42,7 +41,6 @@ fun OneThingTaskDisplay(
     onUpdateSubtask: (String, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    val hazeState = HazeGlassMorphism.rememberHazeState()
     val mainTask = task.mainTask
     val subTasks = task.subTasks
 
@@ -113,19 +111,7 @@ fun OneThingTaskDisplay(
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                     color = Color.White
                 )
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .hazeChild(state = hazeState, blurRadius = 8.dp)
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.335f),
-                            shape = CircleShape
-                        )
-                ) {
+                GlassIconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Close",

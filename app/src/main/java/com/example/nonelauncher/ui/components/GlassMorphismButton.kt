@@ -1,83 +1,64 @@
 package com.example.nonelauncher.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import com.example.nonelauncher.ui.theme.LiquidGlassStyle
+import com.example.nonelauncher.ui.theme.LocalHazeState
 import com.example.nonelauncher.ui.theme.OrangePrimary
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeStyle
+import com.example.nonelauncher.ui.theme.glassPress
+import com.example.nonelauncher.ui.theme.liquidGlass
 
 /**
- * Enhanced glass morphism button component for the nONE Launcher app
- * Uses the Haze library for true glass effects with backdrop blur
+ * The quiet action on a glass surface: blurred wallpaper under a dark tint, white label.
+ * Press feedback is the 14% light wash from [glassPress] plus a 3% settle, never a ripple —
+ * ripples disappear on black glass over a bright photo.
  */
 @Composable
 fun GlassMorphismButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
     text: String,
-    hazeState: HazeState,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    color: Color = OrangePrimary,
     textColor: Color = Color.White,
-    borderColor: Color = Color.White.copy(alpha = 0.2f),
-    borderWidth: Dp = 1.dp,
     cornerRadius: Dp = 16.dp,
     height: Dp = 56.dp,
-    glassAlpha: Float = 0.4f,
-    blurIntensity: HazeGlassMorphism.BlurIntensity = HazeGlassMorphism.BlurIntensity.MEDIUM,
-    padding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    padding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val ripple = rememberRipple(bounded = true)
-    
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = modifier
             .height(height)
-            .clip(RoundedCornerShape(cornerRadius))
-            .then(
-                if (enabled) Modifier.clickable(
-                    interactionSource = interactionSource,
-                    indication = ripple,
-                    onClick = onClick
-                ) else Modifier
+            .liquidGlass(
+                hazeState = LocalHazeState.current,
+                shape = shape,
+                style = LiquidGlassStyle.Control.copy(blurRadius = 16.dp),
             )
-            .hazeChild(
-                state = hazeState,
-                style = HazeStyle(
-                    blurRadius = when (blurIntensity) {
-                        HazeGlassMorphism.BlurIntensity.SUBTLE -> 8.dp
-                        HazeGlassMorphism.BlurIntensity.MEDIUM -> 16.dp
-                        HazeGlassMorphism.BlurIntensity.STRONG -> 24.dp
-                    }
-                )
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
             )
-            .background(Color.Black.copy(alpha = glassAlpha))
-            .border(
-                width = borderWidth,
-                color = if (enabled) borderColor else borderColor.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(cornerRadius)
-            )
+            .glassPress(interaction, shape)
             .padding(padding),
         contentAlignment = Alignment.Center
     ) {
@@ -90,122 +71,60 @@ fun GlassMorphismButton(
 }
 
 /**
- * Gradient glass morphism button with stronger visual emphasis
+ * The one accent action of a surface. A tinted plate, not blurred wallpaper: the brand orange
+ * has to read as the same orange over any wallpaper, so it carries only the glass rim and the
+ * top-left sheen.
  */
 @Composable
 fun GradientGlassMorphismButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
     text: String,
-    hazeState: HazeState,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
     color: Color = OrangePrimary,
     textColor: Color = Color.White,
-    borderColor: Color = Color.White.copy(alpha = 0.2f),
-    borderWidth: Dp = 1.dp,
     cornerRadius: Dp = 16.dp,
     height: Dp = 56.dp,
-    glassAlpha: Float = 0.6f,
-    blurIntensity: HazeGlassMorphism.BlurIntensity = HazeGlassMorphism.BlurIntensity.MEDIUM,
-    padding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    padding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    leadingIcon: (@Composable () -> Unit)? = null,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val ripple = rememberRipple(bounded = true)
-    
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = modifier
             .height(height)
-            .clip(RoundedCornerShape(cornerRadius))
-            .then(
-                if (enabled) Modifier.clickable(
-                    interactionSource = interactionSource,
-                    indication = ripple,
-                    onClick = onClick
-                ) else Modifier
+            .liquidGlass(
+                hazeState = null,
+                shape = shape,
+                style = LiquidGlassStyle(
+                    tint = color,
+                    rimAlpha = 0.42f,
+                    sheenAlpha = 0.18f,
+                    noise = 0f,
+                ),
+                sampling = false,
             )
-            .hazeChild(
-                state = hazeState,
-                style = HazeStyle(
-                    blurRadius = when (blurIntensity) {
-                        HazeGlassMorphism.BlurIntensity.SUBTLE -> 8.dp
-                        HazeGlassMorphism.BlurIntensity.MEDIUM -> 16.dp
-                        HazeGlassMorphism.BlurIntensity.STRONG -> 24.dp
-                    }
-                )
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
             )
-            .background(color.copy(alpha = glassAlpha))
-            .border(
-                width = borderWidth,
-                color = if (enabled) borderColor else borderColor.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(cornerRadius)
-            )
+            .glassPress(interaction, shape)
             .padding(padding),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = text,
-            color = if (enabled) textColor else textColor.copy(alpha = 0.5f),
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-/**
- * Outline glass morphism button - transparent with border
- */
-@Composable
-fun OutlineGlassMorphismButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    text: String,
-    hazeState: HazeState,
-    enabled: Boolean = true,
-    textColor: Color = Color.White,
-    borderColor: Color = Color.White.copy(alpha = 0.3f),
-    borderWidth: Dp = 1.dp,
-    cornerRadius: Dp = 16.dp,
-    height: Dp = 56.dp,
-    glassAlpha: Float = 0.2f,
-    blurIntensity: HazeGlassMorphism.BlurIntensity = HazeGlassMorphism.BlurIntensity.MEDIUM,
-    padding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val ripple = rememberRipple(bounded = true)
-    
-    Box(
-        modifier = modifier
-            .height(height)
-            .clip(RoundedCornerShape(cornerRadius))
-            .then(
-                if (enabled) Modifier.clickable(
-                    interactionSource = interactionSource,
-                    indication = ripple,
-                    onClick = onClick
-                ) else Modifier
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            leadingIcon?.invoke()
+            Text(
+                text = text,
+                color = if (enabled) textColor else textColor.copy(alpha = 0.5f),
+                fontWeight = FontWeight.Bold
             )
-            .hazeChild(
-                state = hazeState,
-                style = HazeStyle(
-                    blurRadius = when (blurIntensity) {
-                        HazeGlassMorphism.BlurIntensity.SUBTLE -> 8.dp
-                        HazeGlassMorphism.BlurIntensity.MEDIUM -> 16.dp
-                        HazeGlassMorphism.BlurIntensity.STRONG -> 24.dp
-                    }
-                )
-            )
-            .background(Color.Transparent)
-            .border(
-                width = borderWidth,
-                color = if (enabled) borderColor else borderColor.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(cornerRadius)
-            )
-            .padding(padding),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = if (enabled) textColor else textColor.copy(alpha = 0.5f),
-            fontWeight = FontWeight.Medium
-        )
+        }
     }
 }

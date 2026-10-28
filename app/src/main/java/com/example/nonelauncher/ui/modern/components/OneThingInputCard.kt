@@ -1,14 +1,10 @@
 package com.example.nonelauncher.ui.modern.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -17,10 +13,9 @@ import com.example.nonelauncher.data.model.OneThingTask
 import com.example.nonelauncher.data.model.SubTask
 import com.example.nonelauncher.data.model.serializeOneThingTask
 import com.example.nonelauncher.ui.theme.OrangePrimary
-import com.example.nonelauncher.ui.theme.apiAwareBlur
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import com.example.nonelauncher.ui.components.GlassMorphismButton
 import com.example.nonelauncher.ui.components.GradientGlassMorphismButton
+import com.example.nonelauncher.ui.theme.LiquidGlassPanel
+import com.example.nonelauncher.ui.theme.LiquidGlassStyle
 
 @Composable
 fun OneThingInputCard(
@@ -29,27 +24,15 @@ fun OneThingInputCard(
 ) {
     var mainTask by remember { mutableStateOf("") }
     var actionStep by remember { mutableStateOf("") }
-    val hazeState = HazeGlassMorphism.rememberHazeState()
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
+    LiquidGlassPanel(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        style = LiquidGlassStyle.Regular.copy(
+            blurRadius = 20.dp,
+            tint = Color(0xFF0A0A0B).copy(alpha = 0.42f),
+        ),
     ) {
-        // Background with blur effect
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color.Black.copy(alpha = 0.4f))
-                //.apiAwareBlur(15.dp, fallbackAlpha = 0.3f)
-                .border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.25f),
-                    shape = RoundedCornerShape(24.dp)
-                )
-        )
-        
-        // Content layer (stays sharp)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -121,8 +104,6 @@ fun OneThingInputCard(
                     }
                 },
                 text = "Set Focus Task",
-                hazeState = hazeState,
-                glassAlpha = 1.0f,  // fully opaque glass
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)

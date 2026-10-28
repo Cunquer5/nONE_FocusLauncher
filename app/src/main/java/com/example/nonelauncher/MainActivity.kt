@@ -1,7 +1,6 @@
 package com.example.nonelauncher
 
 import android.os.Bundle
-import android.view.WindowManager
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,9 +24,11 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
-        // Show device wallpaper behind the launcher
-        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+        // The wallpaper is drawn inside the composition (WallpaperBackground) so glass can sample
+        // it. Reading the static wallpaper needs photo access on Android 13+, though, so the window
+        // stays transparent with the system wallpaper behind it as the un-granted fallback.
         window.setBackgroundDrawableResource(android.R.color.transparent)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
 
         setContent {
             NoneLauncherTheme {

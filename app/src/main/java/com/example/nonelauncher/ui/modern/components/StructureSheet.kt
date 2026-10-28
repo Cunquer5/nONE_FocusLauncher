@@ -1,9 +1,6 @@
 package com.example.nonelauncher.ui.modern.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -11,14 +8,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.nonelauncher.ui.components.GlassContainer
 import com.example.nonelauncher.ui.components.GradientGlassMorphismButton
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import dev.chrisbanes.haze.hazeChild
+import com.example.nonelauncher.ui.theme.GlassIconButton
 
 /**
  * Structure editor sheet: the day as one ordered step per line.
@@ -31,7 +26,6 @@ fun StructureSheet(
     onSave: (List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val hazeState = HazeGlassMorphism.rememberHazeState()
     var text by remember { mutableStateOf(steps.joinToString("\n")) }
 
     GlassContainer(
@@ -55,19 +49,7 @@ fun StructureSheet(
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                     color = Color.White
                 )
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .hazeChild(state = hazeState, blurRadius = 8.dp)
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.335f),
-                            shape = CircleShape
-                        )
-                ) {
+                GlassIconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Close",
@@ -117,8 +99,6 @@ fun StructureSheet(
             GradientGlassMorphismButton(
                 onClick = { onSave(text.lines().filter { it.isNotBlank() }) },
                 text = "Save Structure",
-                hazeState = hazeState,
-                glassAlpha = 1.0f,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)

@@ -53,13 +53,15 @@ import com.example.nonelauncher.data.model.parseOneThingTaskWithState
 import com.example.nonelauncher.data.repository.UserPreferencesRepository
 import com.example.nonelauncher.ui.home.HomeViewModel
 import com.example.nonelauncher.ui.modern.components.*
+import com.example.nonelauncher.ui.theme.LiquidGlassStyle
 import com.example.nonelauncher.ui.theme.OrangePrimary
+import com.example.nonelauncher.ui.theme.liquidGlass
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeChild
 import kotlin.math.abs
 
 @Composable
 fun ModernHomeScreen(
+    hazeState: HazeState,
     homeViewModel: HomeViewModel = viewModel(),
     onOpenSettings: () -> Unit = {},
     onRequestFeedbackPrompt: () -> Unit = {},
@@ -74,7 +76,6 @@ fun ModernHomeScreen(
     val frequentApps = remember(frequentPackages, uiState.apps) {
         frequentPackages.mapNotNull { pkg -> uiState.apps.firstOrNull { it.packageName == pkg } }
     }
-    val hazeState = remember { HazeState() }
 
     // Wake-start: first home resume of a new day resets the structure flow to step 1
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -216,9 +217,15 @@ fun ModernHomeScreen(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
+<<<<<<< HEAD
             ) { dockVisible = false }
             // Swipe up near the bottom reveals the hidden dock — bottom band only, not anywhere
             .pointerInput(showSearch, anySheet, dockShown) {
+=======
+            ) { dialVisible = false }
+            // Swipe up near the bottom reveals the hidden dial — bottom band only, not anywhere
+            .pointerInput(showSearch, anySheet, dialVisible, appToLaunch, showWallpaperDialog) {
+>>>>>>> 8952a49 (fluid glass theme - (cherry pick commit to othre branch))
                 var up = 0f
                 var nearBottom = false
                 detectVerticalDragGestures(
@@ -231,8 +238,15 @@ fun ModernHomeScreen(
                     onVerticalDrag = { _, dragAmount ->
                         // dragAmount < 0 = finger moving upward; require a deliberate cumulative pull
                         if (dragAmount < 0) up += -dragAmount
+<<<<<<< HEAD
                         if (nearBottom && up > 150f && !showSearch && !dockShown) {
                             dockVisible = true
+=======
+                        if (nearBottom && up > 150f && !showSearch && !anySheet && !dialVisible &&
+                            appToLaunch == null && !showWallpaperDialog
+                        ) {
+                            dialVisible = true
+>>>>>>> 8952a49 (fluid glass theme - (cherry pick commit to othre branch))
                             up = 0f
                         }
                     }
@@ -241,7 +255,7 @@ fun ModernHomeScreen(
             // The step chip's top band is the only horizontal screen gesture left: swipe it
             // right for the next step, left for the previous one. Search and Structure are
             // deliberately not edge gestures anymore — the bottom handle owns both.
-            .pointerInput(showSearch, anySheet, structureSteps.size) {
+            .pointerInput(showSearch, anySheet, structureSteps.size, appToLaunch, showWallpaperDialog) {
                 var acc = 0f
                 var onChip = false
                 detectHorizontalDragGestures(
@@ -253,7 +267,9 @@ fun ModernHomeScreen(
                     onDragCancel = { acc = 0f },
                     onHorizontalDrag = { _, dragAmount ->
                         acc += dragAmount
-                        if (onChip && structureSteps.isNotEmpty() && !showSearch && !anySheet) {
+                        if (onChip && structureSteps.isNotEmpty() && !showSearch && !anySheet &&
+                            appToLaunch == null && !showWallpaperDialog
+                        ) {
                             if (acc < -150f) {
                                 homeViewModel.moveStructureStep(1)
                                 acc = 0f
@@ -272,16 +288,14 @@ fun ModernHomeScreen(
             !showSearch && !showSettings && !showHistory && !showOneThing && !showStructure
         ) {
             val idx = structureIndex.coerceIn(0, structureSteps.lastIndex)
+            val chipShape = RoundedCornerShape(20.dp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
                     .padding(top = 16.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .hazeChild(state = hazeState, blurRadius = 14.dp)
-                    .background(Color(0xFF0F0F0F).copy(alpha = 0.55f))
-                    .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                    .liquidGlass(hazeState, chipShape, LiquidGlassStyle.Thin)
                     .clickable { homeViewModel.advanceStructureStep() }
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .clearAndSetSemantics {
@@ -426,16 +440,22 @@ fun ModernHomeScreen(
             )
             val task = oneThingTask
             val done = task?.subTasks?.count { it.isCompleted } ?: 0
+            val islandShape = RoundedCornerShape(18.dp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
+<<<<<<< HEAD
                     .padding(bottom = islandBottom)
                     .clip(RoundedCornerShape(18.dp))
                     .hazeChild(state = hazeState, blurRadius = 12.dp)
                     .background(Color(0xFF0F0F0F).copy(alpha = 0.55f))
                     .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp))
+=======
+                    .padding(bottom = 72.dp)
+                    .liquidGlass(hazeState, islandShape, LiquidGlassStyle.Thin)
+>>>>>>> 8952a49 (fluid glass theme - (cherry pick commit to othre branch))
                     .clickable {
                         showOneThing = true
                         showSettings = false
@@ -827,12 +847,23 @@ private fun HandleDestinationChip(
         modifier = Modifier
             .offset(x = (side * 86f * progress).dp)
             .alpha(progress)
-            .clip(shape)
-            .background(Color(0xFF0F0F0F).copy(alpha = 0.62f))
-            .border(
-                width = 1.dp,
-                color = if (armed) OrangePrimary else Color.White.copy(alpha = 0.18f),
-                shape = shape
+            // No second backdrop pass: the chip rides over the handle's own glass.
+            .liquidGlass(
+                hazeState = null,
+                shape = shape,
+                style = LiquidGlassStyle.Thin.copy(
+                    tint = Color(0xFF0A0A0B).copy(alpha = 0.62f),
+                    rimAlpha = 0.18f,
+                    shadowElevation = 0.dp,
+                ),
+                sampling = false,
+            )
+            .then(
+                if (armed) {
+                    Modifier.border(width = 1.dp, color = OrangePrimary, shape = shape)
+                } else {
+                    Modifier
+                }
             )
             .padding(horizontal = 12.dp, vertical = 6.dp)
             // Transient gesture feedback; the handle itself carries the accessibility actions.

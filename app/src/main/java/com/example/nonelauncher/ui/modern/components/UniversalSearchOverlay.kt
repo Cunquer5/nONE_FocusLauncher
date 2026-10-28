@@ -49,6 +49,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import com.example.nonelauncher.ui.theme.GlassIconButton
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.SquircleShapes
 import com.example.nonelauncher.ui.theme.bottomEnter
@@ -397,18 +398,7 @@ fun UniversalSearchOverlay(
 
                         // Same circular close as the structure sheet. It clears the query; a press
                         // outside the card only hides search and keeps the typed text.
-                        IconButton(
-                            onClick = onCancel,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.5f))
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.White.copy(alpha = 0.335f),
-                                    shape = CircleShape
-                                )
-                        ) {
+                        GlassIconButton(onClick = onCancel) {
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = "Close search",
