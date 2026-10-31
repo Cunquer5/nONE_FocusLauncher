@@ -54,6 +54,21 @@ class UserPreferencesRepository(context: Context) {
             ?.filter { it.isNotBlank() }
             ?.toSet()
 
+    // --- Essentials shelf files: MediaStore uris. Newline-joined — a content uri is not comma-safe ---
+    private val _pinnedFileUris = MutableStateFlow(
+        prefs.getString(KEY_PINNED_FILES, null)
+            ?.split("\n")
+            ?.filter { it.isNotBlank() }
+            ?.toSet()
+            ?: emptySet()
+    )
+    val pinnedFileUris: StateFlow<Set<String>> = _pinnedFileUris.asStateFlow()
+
+    fun setPinnedFileUris(uris: Set<String>) {
+        prefs.edit().putString(KEY_PINNED_FILES, uris.joinToString("\n")).apply()
+        _pinnedFileUris.value = uris
+    }
+
     // --- App launch counts: power the pre-query Frequent grid (pkg:count, comma-separated) ---
     private val _appLaunchCounts = MutableStateFlow(loadAppLaunchCounts())
     val appLaunchCounts: StateFlow<Map<String, Int>> = _appLaunchCounts.asStateFlow()
@@ -232,6 +247,7 @@ class UserPreferencesRepository(context: Context) {
         private const val KEY_FOCUS_MODE_ENABLED = "focus_mode_enabled"
         private const val KEY_APP_LAUNCH_COUNTS = "app_launch_counts"
         private const val KEY_PINNED_APPS = "pinned_apps"
+        private const val KEY_PINNED_FILES = "pinned_files"
         private const val KEY_STRUCTURE_INDEX = "structure_index"
         private const val KEY_STRUCTURE_DAY = "structure_day"
 

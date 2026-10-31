@@ -25,13 +25,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.data.model.AppModel
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism.glassSurfaceLayer
 import com.example.nonelauncher.ui.theme.SquircleShapes
 import com.example.nonelauncher.ui.theme.glassPress
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeStyle
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -44,8 +39,7 @@ fun AppIcon(
     onUninstall: () -> Unit = {},
     onAppInfo: () -> Unit = {},
     isUninstallable: Boolean = false,
-    onTogglePinned: () -> Unit,
-    hazeState: HazeState? = null
+    onTogglePinned: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -151,59 +145,26 @@ fun AppIcon(
             }
         }
 
-        // Use glass effect when hazeState is provided, otherwise use static background
-        if (hazeState != null) {
-            Box(
+        // Static well: a grid of blurred icon wells costs a backdrop pass per icon.
+        Box(
+            modifier = Modifier
+                .size(iconSize)
+                .clip(iconShape)
+                .background(Color.Black.copy(alpha = 0.3f))
+                .glassPress(interactionSource, iconShape)
+        ) {
+            Image(
+                bitmap = app.icon,
+                contentDescription = app.label,
+                colorFilter = colorFilter,
                 modifier = Modifier
-                    .size(iconSize)
+                    .fillMaxSize()
                     .clip(iconShape)
-                    .hazeChild(
-                        state = hazeState,
-                        style = HazeStyle(blurRadius = 8.dp)
+                    .then(
+                        if (isBlurred) Modifier.blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                        else Modifier
                     )
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .border(
-                        width = 1.dp,
-                        color = Color.White.copy(alpha = 0.1f),
-                        shape = iconShape
-                    )
-                    .glassPress(interactionSource, iconShape)
-            ) {
-                Image(
-                    bitmap = app.icon,
-                    contentDescription = app.label,
-                    colorFilter = colorFilter,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(iconShape)
-                        .then(
-                            if (isBlurred) Modifier.blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                            else Modifier
-                        )
-                )
-            }
-        } else {
-            // Use static background when hazeState is not provided to reduce rendering cost
-            Box(
-                modifier = Modifier
-                    .size(iconSize)
-                    .clip(iconShape)
-                    .background(Color.Black.copy(alpha = 0.3f))
-                    .glassPress(interactionSource, iconShape)
-            ) {
-                Image(
-                    bitmap = app.icon,
-                    contentDescription = app.label,
-                    colorFilter = colorFilter,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(iconShape)
-                        .then(
-                            if (isBlurred) Modifier.blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                            else Modifier
-                        )
-                )
-            }
+            )
         }
         
         Spacer(modifier = Modifier.height(5.dp))

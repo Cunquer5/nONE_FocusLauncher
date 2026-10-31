@@ -9,6 +9,23 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.4.3",
+        versionCode = 11,
+        releaseDate = "2026-10-29",
+        features = listOf(
+            "no top bar: the status bar's icons sit on the wallpaper, which carries its own top dim",
+            "every card is a bottom sheet: welded to the bottom edge and rising to 14% short of the top",
+            "sheets close on a 32dp round at the top two corners; the bottom corners are square because they leave the screen",
+            "every sheet has a grabber: drag it down and the card follows the finger, springs back on a short pull and slides off past the threshold",
+            "dial seats are liquid glass too: the wheel's discs blur the wallpaper like every other surface",
+            "dial seats grow to 80dp with a 30° arc pitch, so three discs hold the row at once",
+            "glass blurs the user's real wallpaper: the launcher draws it in-composition and samples it through one Haze source",
+            "fixed cards ending on a slanted edge, glass reading as a flat tint, the sharp rectangle inside cards, and chips/glyphs drifting out of alignment",
+            "dial polish: the hairline track stops at each rim, the unselected 1 Thing glyph is white, the apex label shadow is deeper, and the resting dot carries a soft shadow",
+            "welcome flow asks once for the wallpaper access Android 15 requires; the ground reloads on wallpaper change and resume"
+        )
+    ),
+    VersionInfo(
         versionName = "1.4.2",
         versionCode = 10,
         releaseDate = "2026-05-19",

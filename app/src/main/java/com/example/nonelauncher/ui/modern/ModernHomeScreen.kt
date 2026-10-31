@@ -2,10 +2,6 @@ package com.example.nonelauncher.ui.modern
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import com.example.nonelauncher.ui.theme.bottomEnter
 import com.example.nonelauncher.ui.theme.bottomExit
@@ -27,19 +23,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,10 +46,8 @@ import com.example.nonelauncher.data.repository.UserPreferencesRepository
 import com.example.nonelauncher.ui.home.HomeViewModel
 import com.example.nonelauncher.ui.modern.components.*
 import com.example.nonelauncher.ui.theme.LiquidGlassStyle
-import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.liquidGlass
 import dev.chrisbanes.haze.HazeState
-import kotlin.math.abs
 
 @Composable
 fun ModernHomeScreen(
@@ -97,20 +87,11 @@ fun ModernHomeScreen(
 
     var showInputCard by remember { mutableStateOf(false) }
     var showTaskDisplay by remember { mutableStateOf(false) }
-    var dockVisible by remember { mutableStateOf(false) }
+    var dialVisible by remember { mutableStateOf(false) }
     val anySheet = showSettings || showOneThing || showHistory || showStructure
-    // Sheets anchor above the dock; the structure sheet deliberately does NOT reveal the dock
-    val dockShown = dockVisible || showSettings || showOneThing || showHistory
-
-    val activeTab = remember(showSettings, showOneThing) {
-        when {
-            showSettings -> DockItemType.SETTINGS
-            showOneThing -> DockItemType.ONE_THING
-            else -> DockItemType.NONE
-        }
-    }
 
     val openStructure: () -> Unit = {
+        dialVisible = false
         showStructure = true
         showSettings = false
         showHistory = false
@@ -124,6 +105,7 @@ fun ModernHomeScreen(
     // Search and Structure share the bottom handle, and either can be opened while the
     // other is up, so each entry point must close the rest first.
     val openSearch: () -> Unit = {
+        dialVisible = false
         showSearch = true
         showStructure = false
         showSettings = false
@@ -161,32 +143,49 @@ fun ModernHomeScreen(
     }
     val taskForSheet = oneThingTask ?: retainedTask
 
-    // Left unused, the dock collapses itself back to the small handle; an open sheet keeps it anchored.
-    // dockTouchTick re-arms the window on dock touches that change no other state (Phone).
-    var dockTouchTick by remember { mutableStateOf(0) }
-    LaunchedEffect(dockVisible, anySheet, dockTouchTick) {
-        if (dockVisible && !anySheet) {
-            kotlinx.coroutines.delay(6_000)
-            dockVisible = false
+    val density = LocalDensity.current
+    val statusBarHeight = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
+    // Sheets rise from the bottom and stop short of the top, so the wallpaper keeps a band of
+    // daylight above the glass and a card reads as laid over the page, not as the page itself.
+    val sheetTopGap = LocalConfiguration.current.screenHeightDp.dp * 0.14f
+
+    // Any app outside the essential set is gated by the intention dialog. The dial and the
+    // search overlay share this so the same app behaves the same way from either entry.
+    val launchApp: (AppModel) -> Unit = { app ->
+        val isSystemOrEssential = app.isEssential ||
+            app.packageName == "com.android.settings" ||
+            app.packageName == context.packageName
+        if (isSystemOrEssential) {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+            if (launchIntent != null) context.startActivity(launchIntent)
+        } else {
+            appToLaunch = app
         }
     }
 
-    // The keyboard replaces the structure sheet's 120dp dock gap when it appears. Keeping both
-    // would ride the root imePadding and fling the tall editor off the top edge — the pad
-    // shrinks while the IME is up, so the card settles a reasonable way up, not all the way.
-    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    // Shared by every card that owns a text field (structure editor, search)
-    val sheetPad by animateDpAsState(
-        if (imeVisible) 16.dp else 120.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "sheetPad"
-    )
+    // The dial's seats: the four surfaces first, then whatever the user pinned.
+    val dialPinnedApps = remember(uiState.apps) { uiState.apps.filter { it.isPinned } }
+    val dialEntries = remember(dialPinnedApps) {
+        buildList {
+            add(DialEntry.Action(DialAction.ONE_THING, "1 Thing"))
+            add(DialEntry.Action(DialAction.STRUCTURE, "Structure"))
+            add(DialEntry.Action(DialAction.SEARCH, "Search"))
+            add(DialEntry.Action(DialAction.SETTINGS, "Settings"))
+            add(DialEntry.Action(DialAction.ADD_APPS, "Add apps"))
+            dialPinnedApps.forEach { add(DialEntry.App(it)) }
+        }
+    }
+
+    // The sheets ride the root's imePadding: when the keyboard opens they settle on its top edge
+    // rather than at the bottom of the window, so a focused field is never under the keys.
+    val closeOneThing: () -> Unit = {
+        showOneThing = false
+        showTaskDisplay = false
+        showInputCard = false
+    }
 
     // Back closes the open surface (launcher convention: bare home still swallows back)
-    BackHandler(enabled = showSearch || showOneThing || showSettings || showHistory || showStructure || dockVisible) {
+    BackHandler(enabled = showSearch || showOneThing || showSettings || showHistory || showStructure || dialVisible) {
         when {
             showSearch -> {
                 showSearch = false
@@ -204,7 +203,7 @@ fun ModernHomeScreen(
             }
             else -> {
                 showSettings = false
-                dockVisible = false
+                dialVisible = false
             }
         }
     }
@@ -213,19 +212,13 @@ fun ModernHomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .imePadding()
-            // Tap empty home hides the dock again
+            // Tap empty home hides the dial again
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
-<<<<<<< HEAD
-            ) { dockVisible = false }
-            // Swipe up near the bottom reveals the hidden dock — bottom band only, not anywhere
-            .pointerInput(showSearch, anySheet, dockShown) {
-=======
             ) { dialVisible = false }
             // Swipe up near the bottom reveals the hidden dial — bottom band only, not anywhere
             .pointerInput(showSearch, anySheet, dialVisible, appToLaunch, showWallpaperDialog) {
->>>>>>> 8952a49 (fluid glass theme - (cherry pick commit to othre branch))
                 var up = 0f
                 var nearBottom = false
                 detectVerticalDragGestures(
@@ -238,15 +231,10 @@ fun ModernHomeScreen(
                     onVerticalDrag = { _, dragAmount ->
                         // dragAmount < 0 = finger moving upward; require a deliberate cumulative pull
                         if (dragAmount < 0) up += -dragAmount
-<<<<<<< HEAD
-                        if (nearBottom && up > 150f && !showSearch && !dockShown) {
-                            dockVisible = true
-=======
                         if (nearBottom && up > 150f && !showSearch && !anySheet && !dialVisible &&
                             appToLaunch == null && !showWallpaperDialog
                         ) {
                             dialVisible = true
->>>>>>> 8952a49 (fluid glass theme - (cherry pick commit to othre branch))
                             up = 0f
                         }
                     }
@@ -293,8 +281,7 @@ fun ModernHomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 16.dp)
+                    .padding(top = statusBarHeight + 12.dp)
                     .liquidGlass(hazeState, chipShape, LiquidGlassStyle.Thin)
                     .clickable { homeViewModel.advanceStructureStep() }
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -328,22 +315,23 @@ fun ModernHomeScreen(
         ) {
             val task = taskForSheet
             if (task != null) {
-                OneThingTaskDisplay(
-                    task = task,
-                    onMainTaskCompleted = onMainTaskCompleted,
-                    onUpdateSubtask = { subtaskId, isCompleted ->
-                        homeViewModel.updateSubtaskState(subtaskId, isCompleted)
-                    },
-                    onDismiss = {
-                        showOneThing = false
-                        showTaskDisplay = false
-                        showInputCard = false
-                    },
+                DraggableSheet(
+                    onDismiss = closeOneThing,
                     modifier = Modifier
-                        .padding(bottom = 120.dp)
-                        .padding(horizontal = 8.dp)
-                        .fillMaxHeight(0.85f)
-                )
+                        .fillMaxWidth()
+                        .padding(top = sheetTopGap)
+                        .fillMaxHeight()
+                ) {
+                    OneThingTaskDisplay(
+                        task = task,
+                        onMainTaskCompleted = onMainTaskCompleted,
+                        onUpdateSubtask = { subtaskId, isCompleted ->
+                            homeViewModel.updateSubtaskState(subtaskId, isCompleted)
+                        },
+                        onDismiss = closeOneThing,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
 
@@ -354,12 +342,17 @@ fun ModernHomeScreen(
             exit = bottomExit,
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            OneThingInputCard(
-                onTaskSet = onTaskSet,
+            DraggableSheet(
+                onDismiss = closeOneThing,
                 modifier = Modifier
-                    .padding(bottom = 120.dp)
-                    .padding(horizontal = 16.dp)
-            )
+                    .fillMaxWidth()
+                    .padding(top = sheetTopGap)
+            ) {
+                OneThingInputCard(
+                    onTaskSet = onTaskSet,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         // Settings sheet
@@ -369,22 +362,27 @@ fun ModernHomeScreen(
             exit = bottomExit,
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            SettingsSheet(
+            DraggableSheet(
+                onDismiss = { showSettings = false },
                 modifier = Modifier
-                    .padding(bottom = 120.dp)
-                    .padding(horizontal = 8.dp)
-                    .fillMaxHeight(0.85f),
-                recentIntentions = uiState.recentIntentions,
-                onWallpaperClick = {
-                    showWallpaperDialog = true
-                    showSettings = false
-                },
-                onHistoryClick = {
-                    showHistory = true
-                    showSettings = false
-                    showOneThing = false
-                }
-            )
+                    .fillMaxWidth()
+                    .padding(top = sheetTopGap)
+                    .fillMaxHeight()
+            ) {
+                SettingsSheet(
+                    modifier = Modifier.fillMaxSize(),
+                    recentIntentions = uiState.recentIntentions,
+                    onWallpaperClick = {
+                        showWallpaperDialog = true
+                        showSettings = false
+                    },
+                    onHistoryClick = {
+                        showHistory = true
+                        showSettings = false
+                        showOneThing = false
+                    }
+                )
+            }
         }
 
         // Intention history sheet
@@ -394,17 +392,25 @@ fun ModernHomeScreen(
             exit = bottomExit,
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            IntentionHistorySheet(
-                intentions = allIntentions,
+            DraggableSheet(
                 onDismiss = {
                     showHistory = false
                     showSettings = true
                 },
                 modifier = Modifier
-                    .padding(bottom = 120.dp)
-                    .padding(horizontal = 8.dp)
-                    .fillMaxHeight(0.85f)
-            )
+                    .fillMaxWidth()
+                    .padding(top = sheetTopGap)
+                    .fillMaxHeight()
+            ) {
+                IntentionHistorySheet(
+                    intentions = allIntentions,
+                    onDismiss = {
+                        showHistory = false
+                        showSettings = true
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
 
         // Structure editor sheet
@@ -414,30 +420,27 @@ fun ModernHomeScreen(
             exit = bottomExit,
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            StructureSheet(
-                steps = structureSteps,
+            DraggableSheet(
                 onDismiss = { showStructure = false },
-                onSave = { steps ->
-                    homeViewModel.setStructureSteps(steps)
-                    showStructure = false
-                },
                 modifier = Modifier
-                    .padding(bottom = sheetPad)
-                    .padding(horizontal = 8.dp)
-                    .fillMaxHeight(0.8f)
-            )
+                    .fillMaxWidth()
+                    .padding(top = sheetTopGap)
+                    .fillMaxHeight()
+            ) {
+                StructureSheet(
+                    steps = structureSteps,
+                    onDismiss = { showStructure = false },
+                    onSave = { steps ->
+                        homeViewModel.setStructureSteps(steps)
+                        showStructure = false
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
 
-        // Mini 1 Thing island — rides up above the dock when it expands; hidden under sheets/search
-        if (!showSearch && !showSettings && !showOneThing && !showHistory && !showStructure) {
-            val islandBottom by animateDpAsState(
-                if (dockVisible) 120.dp else 72.dp,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                ),
-                label = "islandShift"
-            )
+        // Mini 1 Thing island — hidden while the dial is out and under any sheet or search
+        if (!showSearch && !showSettings && !showOneThing && !showHistory && !showStructure && !dialVisible) {
             val task = oneThingTask
             val done = task?.subTasks?.count { it.isCompleted } ?: 0
             val islandShape = RoundedCornerShape(18.dp)
@@ -446,16 +449,8 @@ fun ModernHomeScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-<<<<<<< HEAD
-                    .padding(bottom = islandBottom)
-                    .clip(RoundedCornerShape(18.dp))
-                    .hazeChild(state = hazeState, blurRadius = 12.dp)
-                    .background(Color(0xFF0F0F0F).copy(alpha = 0.55f))
-                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp))
-=======
                     .padding(bottom = 72.dp)
                     .liquidGlass(hazeState, islandShape, LiquidGlassStyle.Thin)
->>>>>>> 8952a49 (fluid glass theme - (cherry pick commit to othre branch))
                     .clickable {
                         showOneThing = true
                         showSettings = false
@@ -501,7 +496,7 @@ fun ModernHomeScreen(
                     )
                     if (task.subTasks.isNotEmpty()) {
                         Text(
-                            text = " $done/${task.subTasks.size}",
+                            text = "$done/${task.subTasks.size}",
                             color = Color.White.copy(alpha = 0.75f),
                             style = MaterialTheme.typography.labelSmall,
                             modifier = Modifier.padding(start = 6.dp)
@@ -511,219 +506,106 @@ fun ModernHomeScreen(
             }
         }
 
-        // Bottom dot — the collapsed dock's only handle. Tap reveals the dock; a horizontal
-        // drag pulls the dot toward the surface it opens (left Structure, right search) and
-        // names that destination as it travels. Past 40dp it goes orange, ticks once and
-        // commits on release; short of that, it springs home.
+        // Bottom dot — the collapsed dial's handle, and it stays put. Tap reveals the dial; the
+        // arc is the navigation, so the dot no longer slides toward a destination.
         AnimatedVisibility(
-            visible = !dockShown && !showSearch,
+            visible = !dialVisible && !showSearch && !anySheet,
             enter = fadeIn(tween(180, delayMillis = 120)),
             exit = fadeOut(tween(120)),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            val density = LocalDensity.current
-            val haptic = LocalHapticFeedback.current
-            var dragX by remember { mutableFloatStateOf(0f) } // dp; negative = left
-            var isDragging by remember { mutableStateOf(false) }
-            var armedSide by remember { mutableIntStateOf(0) }
-            val threshold = 40f
-            val progress = (abs(dragX) / threshold).coerceIn(0f, 1f)
-            val eased = progress * progress * (3f - 2f * progress)
-
-            // Released short of the threshold, the dot falls back to rest under its own spring.
-            LaunchedEffect(isDragging) {
-                if (!isDragging && dragX != 0f) {
-                    animate(
-                        initialValue = dragX,
-                        targetValue = 0f,
-                        // Critically damped: an overshoot would flip the dot's stretch and
-                        // flash the opposite direction's chip on the way home.
-                        animationSpec = spring(dampingRatio = 0.9f, stiffness = 550f)
-                    ) { value, _ ->
-                        dragX = value
-                    }
-                }
-            }
-
             Box(
                 modifier = Modifier
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp)
-                    .fillMaxWidth()
-                    .height(56.dp),
+                    .size(56.dp)
+                    // No ripple: the default (dark) indication filled the square touch bounds
+                    // behind the round dot.
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { dialVisible = true }
+                    .semantics { contentDescription = "App dial. Tap to open." },
                 contentAlignment = Alignment.Center
             ) {
-                // Only the active direction exists while the finger is down, sliding out
-                // from behind the dot; it clears on release instead of riding the spring back.
-                if (isDragging && dragX < -2f) {
-                    HandleDestinationChip(
-                        label = "Structure",
-                        side = -1,
-                        progress = eased,
-                        armed = armedSide == -1
-                    )
-                } else if (isDragging && dragX > 2f) {
-                    HandleDestinationChip(
-                        label = "Search",
-                        side = 1,
-                        progress = eased,
-                        armed = armedSide == 1
-                    )
-                }
-
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        // No ripple: the default (dark) indication filled the square touch
-                        // bounds behind the round dot. The stretch is the press feedback.
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { dockVisible = true }
-                        // After clickable so the drag detector sees the Main pass first: a swipe is
-                        // consumed and cancels the tap, while a still finger still opens the dock.
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragStart = {
-                                    armedSide = 0
-                                    dragX = 0f
-                                    isDragging = true
-                                },
-                                onDragCancel = {
-                                    armedSide = 0
-                                    isDragging = false
-                                },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    val deltaDp = with(density) { dragAmount.toDp().value }
-                                    dragX = (dragX + deltaDp).coerceIn(-72f, 72f)
-                                    val nowArmed = when {
-                                        dragX <= -threshold -> -1
-                                        dragX >= threshold -> 1
-                                        else -> 0
-                                    }
-                                    if (nowArmed != 0 && nowArmed != armedSide) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    }
-                                    armedSide = nowArmed
-                                },
-                                onDragEnd = {
-                                    val target = armedSide
-                                    armedSide = 0
-                                    isDragging = false
-                                    when (target) {
-                                        -1 -> openStructure()
-                                        1 -> openSearch()
-                                    }
-                                }
-                            )
-                        }
-                        // Swipes have no TalkBack equivalent, so both destinations are also
-                        // exposed as accessibility actions on the same node.
-                        .semantics {
-                            contentDescription =
-                                "Dock. Tap to open. Swipe left for Structure, swipe right for search."
-                            customActions = listOf(
-                                CustomAccessibilityAction("Open Structure") {
-                                    openStructure()
-                                    true
-                                },
-                                CustomAccessibilityAction("Open Search") {
-                                    openSearch()
-                                    true
-                                }
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Direction reads from the dot's own body: it leans and stretches toward
-                    // the surface the finger is pulling it to, anchored on the far edge.
-                    val direction = if (dragX < 0f) -1f else 1f
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .graphicsLayer {
-                                translationX = (dragX * 0.55f).coerceIn(-24f, 24f).dp.toPx()
-                                scaleX = 1f + 0.5f * eased
-                                scaleY = 1f - 0.12f * eased
-                                transformOrigin = TransformOrigin(
-                                    if (direction < 0f) 1f else 0f,
-                                    0.5f
-                                )
-                            }
-                            .clip(CircleShape)
-                            .background(
-                                if (armedSide != 0) OrangePrimary
-                                else Color.White.copy(alpha = 0.45f + 0.4f * eased)
-                            )
-                    )
-                }
+                        .size(20.dp)
+                        // A drop shadow, not a denser fill: the only resting control has to
+                        // read on a bright photo without turning into a button.
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = CircleShape,
+                            ambientColor = Color.Black.copy(alpha = 0.40f),
+                            spotColor = Color.Black.copy(alpha = 0.40f)
+                        )
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.55f))
+                )
             }
         }
 
-        // Dock — hidden until swipe-up, bottom handle, or an open sheet reveals it.
-        // Spring arrival decelerates naturally; exit is a stiffer, faster retract.
-        AnimatedVisibility(
-            visible = dockShown,
-            enter = bottomEnter,
-            exit = bottomExit,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            GlassDock(
-            hazeState = hazeState,
-            activeItem = activeTab,
-            modifier = Modifier,
-            onPhoneClick = {
-                dockTouchTick++
-                try {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_DIAL)
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    android.widget.Toast.makeText(context, "No phone dialer found", android.widget.Toast.LENGTH_SHORT).show()
-                }
-            },
-            onOneThingClick = {
-                if (UserPreferencesRepository.FEEDBACK_TEST_TRIGGER_ON_ONE_THING) {
-                    onRequestFeedbackPrompt()
-                }
-                if (showOneThing) {
-                    showOneThing = false
-                    showInputCard = false
-                    showTaskDisplay = false
-                } else {
-                    showOneThing = true
-                    showSettings = false
-                    showHistory = false
-                    if (oneThingTask != null) {
-                        showTaskDisplay = true
+        // The dial — the dock, re-seated on an arc. Swipe up from the bottom band, or tap the
+        // dot; it retracts by itself after 3s of no touch.
+        ArcDial(
+            visible = dialVisible,
+            entries = dialEntries,
+            onAction = { action ->
+                dialVisible = false
+                when (action) {
+                    DialAction.ONE_THING -> {
+                        if (UserPreferencesRepository.FEEDBACK_TEST_TRIGGER_ON_ONE_THING) {
+                            onRequestFeedbackPrompt()
+                        }
+                        showOneThing = true
+                        showSettings = false
+                        showHistory = false
+                        if (oneThingTask != null) {
+                            showTaskDisplay = true
+                            showInputCard = false
+                        } else {
+                            showInputCard = true
+                            showTaskDisplay = false
+                        }
+                    }
+                    DialAction.STRUCTURE -> openStructure()
+                    DialAction.SEARCH -> openSearch()
+                    DialAction.SETTINGS -> {
+                        showSettings = true
+                        showHistory = false
+                        showOneThing = false
                         showInputCard = false
-                    } else {
-                        showInputCard = true
                         showTaskDisplay = false
+                    }
+                    DialAction.ADD_APPS -> {
+                        openSearch()
+                        android.widget.Toast.makeText(
+                            context,
+                            "Long-press an app or file in search, then Add to Essentials.",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
             },
-            onSettingsClick = {
-                if (showSettings) {
-                    showSettings = false
-                } else {
-                    showSettings = true
-                    showHistory = false
-                    showOneThing = false
-                }
-            }
+            onApp = { app ->
+                dialVisible = false
+                launchApp(app)
+            },
+            onRequestHide = { dialVisible = false },
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
-        }
 
         // Search overlay — a floating glass card that rises from the bottom; the bottom
         // handle's rightward swipe is its only trigger now that the edge artifact is gone.
         UniversalSearchOverlay(
             visible = showSearch,
-            bottomPad = sheetPad,
+            topPad = sheetTopGap,
             searchQueryFlow = homeViewModel.searchQuery,
             onSearchQueryChange = { homeViewModel.onSearchQueryChanged(it) },
             apps = uiState.apps,
             contactsFlow = homeViewModel.contactResults,
             filesFlow = homeViewModel.fileResults,
+            pinnedFilesFlow = homeViewModel.pinnedFiles,
             onDismiss = {
                 showSearch = false
                 // Query is preserved; Pixel-launcher behavior — a mis-tap on empty glass
@@ -737,17 +619,10 @@ fun ModernHomeScreen(
             onAppClick = { app ->
                 showSearch = false
                 homeViewModel.onSearchQueryChanged("")
-                val isSystemOrEssential = app.isEssential ||
-                    app.packageName == "com.android.settings" ||
-                    app.packageName == context.packageName
-                if (isSystemOrEssential) {
-                    val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                    if (launchIntent != null) context.startActivity(launchIntent)
-                } else {
-                    appToLaunch = app
-                }
+                launchApp(app)
             },
             onTogglePinned = { homeViewModel.togglePinnedApp(it) },
+            onTogglePinnedFile = { homeViewModel.togglePinnedFile(it) },
             onContactClick = { contact ->
                 showSearch = false
                 homeViewModel.onSearchQueryChanged("")
@@ -830,50 +705,3 @@ fun ModernHomeScreen(
     }
 }
 
-/**
- * The destination that a handle swipe is pulling toward. It rides out from behind the dot as
- * the drag grows and turns orange once the gesture is armed, so the target is named before the
- * finger lifts rather than discovered after the sheet opens.
- */
-@Composable
-private fun HandleDestinationChip(
-    label: String,
-    side: Int,
-    progress: Float,
-    armed: Boolean,
-) {
-    val shape = RoundedCornerShape(50)
-    Box(
-        modifier = Modifier
-            .offset(x = (side * 86f * progress).dp)
-            .alpha(progress)
-            // No second backdrop pass: the chip rides over the handle's own glass.
-            .liquidGlass(
-                hazeState = null,
-                shape = shape,
-                style = LiquidGlassStyle.Thin.copy(
-                    tint = Color(0xFF0A0A0B).copy(alpha = 0.62f),
-                    rimAlpha = 0.18f,
-                    shadowElevation = 0.dp,
-                ),
-                sampling = false,
-            )
-            .then(
-                if (armed) {
-                    Modifier.border(width = 1.dp, color = OrangePrimary, shape = shape)
-                } else {
-                    Modifier
-                }
-            )
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            // Transient gesture feedback; the handle itself carries the accessibility actions.
-            .clearAndSetSemantics { }
-    ) {
-        Text(
-            text = label,
-            color = if (armed) OrangePrimary else Color.White.copy(alpha = 0.9f),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}

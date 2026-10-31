@@ -38,7 +38,7 @@ fun SettingsSheet(
 ) {
     LiquidGlassPanel(
         modifier = modifier.fillMaxSize(),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         style = LiquidGlassStyle.Regular.copy(
             blurRadius = 22.dp,
             tint = Color(0xFF0A0A0B).copy(alpha = 0.55f),
@@ -47,7 +47,8 @@ fun SettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(start = 24.dp, top = 36.dp, end = 24.dp, bottom = 24.dp)
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
@@ -131,7 +132,6 @@ fun IntentionCard(intention: Intention) {
                     tint = Color(0xFF0A0A0B).copy(alpha = 0.42f),
                     rimAlpha = 0.12f,
                     sheenAlpha = 0.03f,
-                    shadowElevation = 0.dp,
                 ),
                 sampling = false,
             )

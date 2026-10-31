@@ -15,6 +15,13 @@ import androidx.core.content.ContextCompat
 
 class FileRepository(private val context: Context) {
 
+    private val projection = arrayOf(
+        MediaStore.Files.FileColumns._ID,
+        MediaStore.Files.FileColumns.DISPLAY_NAME,
+        MediaStore.Files.FileColumns.SIZE,
+        MediaStore.Files.FileColumns.MIME_TYPE
+    )
+
     suspend fun searchFiles(query: String): List<FileModel> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
 
@@ -31,13 +38,6 @@ class FileRepository(private val context: Context) {
         // so we might need specific collections, but for now we'll stick to external.
         // Also avoiding redundant queries.
 
-        val projection = arrayOf(
-            MediaStore.Files.FileColumns._ID,
-            MediaStore.Files.FileColumns.DISPLAY_NAME,
-            MediaStore.Files.FileColumns.SIZE,
-            MediaStore.Files.FileColumns.MIME_TYPE
-        )
-
         val selection = "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
         val selectionArgs = arrayOf("%$query%")
         val sortOrder = "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
@@ -45,34 +45,10 @@ class FileRepository(private val context: Context) {
         try {
             collections.forEach { uri ->
                 contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
-                    val idIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID)
-                    val nameIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
-                    val sizeIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
-                    val mimeIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
-
                     while (cursor.moveToNext()) {
-                        if (idIndex == -1 || nameIndex == -1) continue
-                        
-                        val id = cursor.getLong(idIndex)
-                        val name = cursor.getString(nameIndex) ?: "Unknown"
-                        val size = if (sizeIndex != -1) cursor.getLong(sizeIndex) else 0L
-                        val mimeType = if (mimeIndex != -1) cursor.getString(mimeIndex) else null
-
-                        val fileType = when {
-                            mimeType?.startsWith("image/") == true -> FileType.IMAGE
-                            mimeType?.startsWith("video/") == true -> FileType.VIDEO
-                            mimeType?.startsWith("audio/") == true -> FileType.AUDIO
-                            mimeType?.startsWith("application/pdf") == true || 
-                            mimeType?.startsWith("text/") == true -> FileType.DOCUMENT
-                            else -> FileType.OTHER
-                        }
-
-                        val fileUri = Uri.withAppendedPath(uri, id.toString())
-                        
                         // Using URI as key instead of path since DATA is deprecated
-                        if (files.none { it.uri == fileUri }) {
-                            files.add(FileModel(id, name, "", fileUri, size, fileType))
-                        }
+                        val file = cursorToFileModel(uri, cursor) ?: continue
+                        if (files.none { it.uri == file.uri }) files.add(file)
                     }
                 }
             }
@@ -81,6 +57,59 @@ class FileRepository(private val context: Context) {
         }
         
         files.take(20)
+    }
+
+    /**
+     * Resolves the Essentials shelf's pinned uris. Reading them back from MediaStore is what drops
+     * a deleted file from the shelf on its own, with no bookkeeping of ours.
+     */
+    suspend fun getFilesByUris(uris: Set<String>): List<FileModel> = withContext(Dispatchers.IO) {
+        if (!canReadFiles(context)) return@withContext emptyList()
+
+        // Only the numeric id taken from a content uri reaches the selection, so it cannot carry input.
+        val ids = uris.mapNotNull { Uri.parse(it).lastPathSegment?.toLongOrNull() }
+        if (ids.isEmpty()) return@withContext emptyList()
+
+        val collection = MediaStore.Files.getContentUri("external")
+        val selection = "${MediaStore.Files.FileColumns._ID} IN (${ids.joinToString(",")})"
+        val files = mutableListOf<FileModel>()
+        try {
+            context.contentResolver.query(collection, projection, selection, null, null)?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    cursorToFileModel(collection, cursor)?.let { files.add(it) }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        files
+    }
+
+    private fun cursorToFileModel(
+        collection: Uri,
+        cursor: android.database.Cursor,
+    ): FileModel? {
+        val idIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID)
+        val nameIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+        if (idIndex == -1 || nameIndex == -1) return null
+
+        val id = cursor.getLong(idIndex)
+        val name = cursor.getString(nameIndex) ?: "Unknown"
+        val sizeIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
+        val size = if (sizeIndex != -1) cursor.getLong(sizeIndex) else 0L
+        val mimeIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+        val mimeType = if (mimeIndex != -1) cursor.getString(mimeIndex) else null
+
+        val fileType = when {
+            mimeType?.startsWith("image/") == true -> FileType.IMAGE
+            mimeType?.startsWith("video/") == true -> FileType.VIDEO
+            mimeType?.startsWith("audio/") == true -> FileType.AUDIO
+            mimeType?.startsWith("application/pdf") == true ||
+            mimeType?.startsWith("text/") == true -> FileType.DOCUMENT
+            else -> FileType.OTHER
+        }
+
+        return FileModel(id, name, "", Uri.withAppendedPath(collection, id.toString()), size, fileType)
     }
 
     companion object {

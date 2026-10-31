@@ -5,7 +5,7 @@ plugins {
 }
 
 // Version constants
-val COMPILE_SDK = 34
+val COMPILE_SDK = 35
 val MIN_SDK = 28
 val TARGET_SDK = 34
 val JAVA_VERSION = JavaVersion.VERSION_17
@@ -18,8 +18,8 @@ android {
         applicationId = "com.example.nonelauncher"
         minSdk = MIN_SDK
         targetSdk = TARGET_SDK
-        versionCode = 10
-        versionName = "1.4.2"
+        versionCode = 11
+        versionName = "1.4.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -54,14 +54,14 @@ android {
 
 dependencies {
     // Version catalogs for library dependencies
-    val composeBom = "androidx.compose:compose-bom:2024.06.00"
+    val composeBom = "androidx.compose:compose-bom:2025.05.00"
     val roomVersion = "2.7.0-alpha11"
     val navigationVersion = "2.7.5"
 
     // Core Android libraries
     implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.activity:activity-ktx:1.8.2")
-    implementation("androidx.activity:activity-compose:1.8.1")
+    implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("androidx.activity:activity-compose:1.10.1")
 
     // Lifecycle management
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
@@ -85,7 +85,7 @@ dependencies {
     ksp("androidx.room:room-compiler:$roomVersion")
 
     // Haze library for glass morphism effects
-    implementation("dev.chrisbanes.haze:haze-jetpack-compose:0.5.0")
+    implementation("dev.chrisbanes.haze:haze:1.6.10")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")

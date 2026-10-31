@@ -6,7 +6,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 **nONE FocusLauncher** is a minimalist Android system launcher built with Kotlin and Jetpack Compose. It uses a productivity-focused design with features like grayscale focus mode, intention prompts, and a "1 Thing" task manager. The app targets Android API 28+ and uses modern Android architecture (MVVM).
 
-**Note**: As of v1.4.1, the launcher uses a single Modern UI design with a **Universal Search Bar** (Apps, Contacts, Files) using a swipe-down-to-search pattern. v1.4.2 adds first-launch welcome and optional feedback prompts (local timing only).
+**Note**: As of v1.4.1, the launcher uses a single Modern UI design with a **Universal Search Bar** (Apps, Contacts, Files) using a swipe-down-to-search pattern. v1.4.2 adds first-launch welcome and optional feedback prompts (local timing only). v1.4.3 adds wallpaper-under-status-bar, bottom-anchored draggable sheets with 32dp top rounds, and glass dial seats.
 
 ## Build & Development Commands
 
@@ -79,8 +79,8 @@ Heavy / Control / Seat) applied with `Modifier.liquidGlass(hazeState, shape, sty
 `LocalHazeState`; never create a second one. Modal overlays (intention, wallpaper, welcome, feedback)
 are composed in the home window, not as `Dialog` windows, so their glass can sample that source.
 Surfaces resting *on* glass pass `sampling = false` (tint, sheen and rim without a second backdrop
-pass); the dial seats are always non-sampling because the wheel redraws every dragged frame and
-blurred children left ghost layers behind on retract.
+pass). Dial seats sample the wallpaper like every other disc: their tint is thinner than a sheet's
+because a 68–80dp disc must show the ground, with a 22dp blur keeping the glyphs legible.
 
 ### Data Flow Architecture
 
@@ -170,7 +170,7 @@ Required permissions in AndroidManifest.xml:
 - `REQUEST_DELETE_PACKAGES`: App uninstall support
 
 ### Version Info
-- **Current Version**: 1.4.2 (versionCode 10)
+- **Current Version**: 1.4.3 (versionCode 11)
 - **Target SDK**: 35 (Android 15)
 - **Min SDK**: 28 (Android 9)
 - **Java Version**: 17

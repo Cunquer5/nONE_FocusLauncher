@@ -55,7 +55,8 @@ fun IntentionHistorySheet(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(start = 24.dp, top = 36.dp, end = 24.dp, bottom = 24.dp)
+                .navigationBarsPadding()
         ) {
             // Header
             Row(
@@ -130,7 +131,6 @@ fun HistoryItem(intention: Intention) {
                     tint = Color(0xFF0A0A0B).copy(alpha = 0.42f),
                     rimAlpha = 0.14f,
                     sheenAlpha = 0.03f,
-                    shadowElevation = 0.dp,
                 ),
                 sampling = false,
             )

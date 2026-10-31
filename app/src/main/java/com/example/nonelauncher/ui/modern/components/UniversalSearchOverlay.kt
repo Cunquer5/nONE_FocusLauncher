@@ -91,17 +91,19 @@ fun UniversalSearchOverlay(
     apps: List<AppModel>,
     contactsFlow: StateFlow<List<ContactModel>>,
     filesFlow: StateFlow<List<FileModel>>,
+    pinnedFilesFlow: StateFlow<List<FileModel>>,
     onDismiss: () -> Unit,
     onCancel: () -> Unit,
     onAppClick: (AppModel) -> Unit,
     onTogglePinned: (AppModel) -> Unit,
     onContactClick: (ContactModel) -> Unit,
     onFileClick: (FileModel) -> Unit,
+    onTogglePinnedFile: (FileModel) -> Unit,
     focusModeEnabled: Boolean = false,
     frequentApps: List<AppModel> = emptyList(),
     isSearchingFlow: StateFlow<Boolean>,
     onRefreshResults: () -> Unit = {},
-    bottomPad: Dp = 120.dp,
+    topPad: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -111,7 +113,9 @@ fun UniversalSearchOverlay(
     // recomposes only the overlay subtree, not the whole home behind the blur.
     val contacts by contactsFlow.collectAsState()
     val files by filesFlow.collectAsState()
+    val pinnedFiles by pinnedFilesFlow.collectAsState()
     val isSearching by isSearchingFlow.collectAsState()
+    val pinnedFileUris = remember(pinnedFiles) { pinnedFiles.map { it.uri.toString() }.toSet() }
 
     // Permission state is re-read from the PackageManager after every dialog and every Settings
     // visit — grants can also happen outside the app.
@@ -302,266 +306,291 @@ fun UniversalSearchOverlay(
                     }
             )
 
-            // Floating glass card — 32dp corners, 8dp side margins, parked a dock-height above the
-            // bottom edge (the gap collapses when the keyboard is up so the field stays in reach).
-            GlassContainer(
+            // Full-width glass card, welded to the bottom edge and stopped short of the top; its
+            // grabber pulls it down like every other sheet.
+            DraggableSheet(
+                onDismiss = onDismiss,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = bottomPad)
-                    .padding(horizontal = 8.dp)
+                    .padding(top = topPad)
                     .fillMaxWidth()
-                    .fillMaxHeight(0.8f)
-                    .semantics { paneTitle = "Search apps, contacts, files" }
-                    // Register a hit target over the glass so presses on the card do not fall
-                    // through to the dismiss layer behind it.
-                    .pointerInput(Unit) {
-                        detectTapGestures { }
-                    }
-                    .pointerInput(Unit) {
-                        var total = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { total = 0f },
-                            onDragCancel = { total = 0f },
-                            onHorizontalDrag = { _, dragAmount -> total += dragAmount },
-                            onDragEnd = {
-                                if (total < -80.dp.toPx()) onDismiss()
-                                total = 0f
-                            }
-                        )
-                    },
-                cornerRadius = 32.dp,
-                blurRadius = 22.dp,
-                tintAlpha = 0.55f
+                    .fillMaxHeight(),
             ) {
-                Column(
+                GlassContainer(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp)
-                        .padding(top = 20.dp, bottom = 12.dp)
-                ) {
-                    // Search bar row
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        TextField(
-                            value = query,
-                            onValueChange = {
-                                query = it
-                                onSearchQueryChange(it)
-                            },
-                            placeholder = {
-                                Text("Search apps, contacts, files...", color = Color.White.copy(alpha = 0.65f))
-                            },
-                            leadingIcon = {
-                                // Decorative — the placeholder already labels the field for TalkBack.
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(0.7f)
-                                )
-                            },
-                            trailingIcon = {
-                                if (query.isNotEmpty()) {
-                                    IconButton(onClick = {
-                                        query = ""
-                                        onSearchQueryChange("")
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "Clear",
-                                            tint = Color.White.copy(0.7f)
-                                        )
-                                    }
+                        .semantics { paneTitle = "Search apps, contacts, files" }
+                        // Register a hit target over the glass so presses on the card do not fall
+                        // through to the dismiss layer behind it.
+                        .pointerInput(Unit) {
+                            detectTapGestures { }
+                        }
+                        .pointerInput(Unit) {
+                            var total = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = { total = 0f },
+                                onDragCancel = { total = 0f },
+                                onHorizontalDrag = { _, dragAmount -> total += dragAmount },
+                                onDragEnd = {
+                                    if (total < -80.dp.toPx()) onDismiss()
+                                    total = 0f
                                 }
-                            },
-                            colors = TextFieldDefaults.colors(
-                                // Same field as the structure editor: a quiet well on the glass
-                                focusedContainerColor = Color.Black.copy(alpha = 0.35f),
-                                unfocusedContainerColor = Color.Black.copy(alpha = 0.35f),
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                cursorColor = OrangePrimary
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                                .focusRequester(focusRequester),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = { launchTopResult() }),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Same circular close as the structure sheet. It clears the query; a press
-                        // outside the card only hides search and keeps the typed text.
-                        GlassIconButton(onClick = onCancel) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Close search",
-                                tint = Color.White.copy(0.8f),
-                                modifier = Modifier.size(20.dp)
                             )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Fetching contacts/files for the current query — thin orange hairline
-                    if (isSearching && query.isNotBlank()) {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(2.dp),
-                            color = OrangePrimary,
-                            trackColor = Color.White.copy(alpha = 0.08f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    if (query.isBlank()) {
-                        // Pre-query: launch what you actually launch, instead of a blank recall test
-                        val pinnedApps = remember(apps) { apps.filter { it.isPinned } }
-                        if (frequentApps.isNotEmpty() || pinnedApps.isNotEmpty()) {
-                            Column(
+                        },
+                    cornerRadius = 32.dp,
+                    blurRadius = 22.dp,
+                    tintAlpha = 0.55f
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 36.dp, bottom = 12.dp)
+                            .navigationBarsPadding()
+                    ) {
+                        // Search bar row
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            TextField(
+                                value = query,
+                                onValueChange = {
+                                    query = it
+                                    onSearchQueryChange(it)
+                                },
+                                placeholder = {
+                                    Text("Search apps, contacts, files...", color = Color.White.copy(alpha = 0.65f))
+                                },
+                                leadingIcon = {
+                                    // Decorative — the placeholder already labels the field for TalkBack.
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(0.7f)
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (query.isNotEmpty()) {
+                                        IconButton(onClick = {
+                                            query = ""
+                                            onSearchQueryChange("")
+                                        }) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "Clear",
+                                                tint = Color.White.copy(0.7f)
+                                            )
+                                        }
+                                    }
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    // Same field as the structure editor: a quiet well on the glass
+                                    focusedContainerColor = Color.Black.copy(alpha = 0.35f),
+                                    unfocusedContainerColor = Color.Black.copy(alpha = 0.35f),
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    cursorColor = OrangePrimary
+                                ),
                                 modifier = Modifier
-                                    .fillMaxWidth()
                                     .weight(1f)
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(bottom = 16.dp)
-                            ) {
-                                if (frequentApps.isNotEmpty()) {
-                                    SearchSectionHeader("Frequent")
-                                    AppsGrid(
-                                        apps = frequentApps.take(8),
-                                        onAppClick = onAppClick,
-                                        onTogglePinned = onTogglePinned,
-                                        focusModeEnabled = focusModeEnabled
-                                    )
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                }
-                                if (pinnedApps.isNotEmpty()) {
-                                    SearchSectionHeader("Essentials")
-                                    AppsGrid(
-                                        apps = pinnedApps,
-                                        onAppClick = onAppClick,
-                                        onTogglePinned = onTogglePinned,
-                                        focusModeEnabled = focusModeEnabled
-                                    )
-                                }
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 64.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Type to search",
-                                    color = Color.White.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .focusRequester(focusRequester),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(onSearch = { launchTopResult() }),
+                                singleLine = true
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Same circular close as the structure sheet. It clears the query; a press
+                            // outside the card only hides search and keeps the typed text.
+                            GlassIconButton(onClick = onCancel) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Close search",
+                                    tint = Color.White.copy(0.8f),
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                // Live announcements only — a container contentDescription here
-                                // would override the readable children for TalkBack
-                                .semantics { liveRegion = LiveRegionMode.Polite },
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            // Results flow as cardless rows grouped by floating labels —
-                            // headers scroll with the list; nothing occludes on the glass
 
-                            // Apps Section
-                            if (filteredApps.isNotEmpty()) {
-                                item {
-                                    SearchSectionHeader("Apps")
-                                }
-                                items(filteredApps) { app ->
-                                    AppResultRow(
-                                        app = app,
-                                        query = query,
-                                        onAppClick = onAppClick,
-                                        onTogglePinned = onTogglePinned,
-                                    )
-                                }
-                            }
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                            // Contacts Section
-                            if (contacts.isNotEmpty()) {
-                                item {
-                                    SearchSectionHeader("Contacts")
-                                }
-                                items(contacts) { contact ->
-                                    ContactItem(contact, query, onContactClick)
-                                }
-                            }
+                        // Fetching contacts/files for the current query — thin orange hairline
+                        if (isSearching && query.isNotBlank()) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(2.dp),
+                                color = OrangePrimary,
+                                trackColor = Color.White.copy(alpha = 0.08f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
-                            // Files Section
-                            if (files.isNotEmpty()) {
-                                item {
-                                    SearchSectionHeader("Files")
-                                }
-                                items(files) { file ->
-                                    FileItem(file, query, onFileClick)
-                                }
-                            }
-
-                            // Recovery card: one message that names what happened and what to do next.
-                            // When sources are missing but partial results exist, keep the standalone CTA.
-                            val noResults = filteredApps.isEmpty() && contacts.isEmpty() && files.isEmpty()
-                            val missingPermissions = !hasContactPermission || !hasFilePermission
-                            if (noResults) {
-                                item {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 24.dp)
-                                            .padding(top = 48.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                            text = "No matches for \"$query\"",
-                                            color = Color.White.copy(alpha = 0.85f),
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Medium
+                        if (query.isBlank()) {
+                            // Pre-query: launch what you actually launch, instead of a blank recall test
+                            val pinnedApps = remember(apps) { apps.filter { it.isPinned } }
+                            if (frequentApps.isNotEmpty() || pinnedApps.isNotEmpty() || pinnedFiles.isNotEmpty()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                        .verticalScroll(rememberScrollState())
+                                        .padding(bottom = 16.dp)
+                                ) {
+                                    if (frequentApps.isNotEmpty()) {
+                                        SearchSectionHeader("Frequent")
+                                        AppsGrid(
+                                            apps = frequentApps.take(8),
+                                            onAppClick = onAppClick,
+                                            onTogglePinned = onTogglePinned,
+                                            focusModeEnabled = focusModeEnabled
                                         )
-                                        Text(
-                                            text = if (missingPermissions)
-                                                "Try fewer letters, or add contacts and files to results."
-                                            else
-                                                "Try fewer letters, or check the spelling.",
-                                            color = Color.White.copy(alpha = 0.55f),
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                        if (missingPermissions) {
-                                            AddSourcesRow(
-                                                missingContacts = !hasContactPermission,
-                                                missingFiles = !hasFilePermission,
-                                                onAddContacts = requestContacts,
-                                                onAddFiles = requestFiles,
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                    }
+                                    if (pinnedApps.isNotEmpty() || pinnedFiles.isNotEmpty()) {
+                                        SearchSectionHeader("Essentials")
+                                        if (pinnedApps.isNotEmpty()) {
+                                            AppsGrid(
+                                                apps = pinnedApps,
+                                                onAppClick = onAppClick,
+                                                onTogglePinned = onTogglePinned,
+                                                focusModeEnabled = focusModeEnabled
+                                            )
+                                        }
+                                        // Files have no icon to sit in the grid, so they keep the
+                                        // row shape they have in results — same list, same rhythm.
+                                        pinnedFiles.forEach { file ->
+                                            FileItem(
+                                                file = file,
+                                                query = "",
+                                                isPinned = true,
+                                                onTogglePinned = onTogglePinnedFile,
+                                                onClick = onFileClick
                                             )
                                         }
                                     }
                                 }
-                            } else if (missingPermissions) {
-                                item {
-                                    AddSourcesRow(
-                                        missingContacts = !hasContactPermission,
-                                        missingFiles = !hasFilePermission,
-                                        onAddContacts = requestContacts,
-                                        onAddFiles = requestFiles,
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 64.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Type to search",
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
                                     )
+                                }
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    // Live announcements only — a container contentDescription here
+                                    // would override the readable children for TalkBack
+                                    .semantics { liveRegion = LiveRegionMode.Polite },
+                                contentPadding = PaddingValues(bottom = 16.dp)
+                            ) {
+                                // Results flow as cardless rows grouped by floating labels —
+                                // headers scroll with the list; nothing occludes on the glass
+
+                                // Apps Section
+                                if (filteredApps.isNotEmpty()) {
+                                    item {
+                                        SearchSectionHeader("Apps")
+                                    }
+                                    items(filteredApps) { app ->
+                                        AppResultRow(
+                                            app = app,
+                                            query = query,
+                                            onAppClick = onAppClick,
+                                            onTogglePinned = onTogglePinned,
+                                        )
+                                    }
+                                }
+
+                                // Contacts Section
+                                if (contacts.isNotEmpty()) {
+                                    item {
+                                        SearchSectionHeader("Contacts")
+                                    }
+                                    items(contacts) { contact ->
+                                        ContactItem(contact, query, onContactClick)
+                                    }
+                                }
+
+                                // Files Section
+                                if (files.isNotEmpty()) {
+                                    item {
+                                        SearchSectionHeader("Files")
+                                    }
+                                    items(files) { file ->
+                                        FileItem(
+                                            file = file,
+                                            query = query,
+                                            isPinned = file.uri.toString() in pinnedFileUris,
+                                            onTogglePinned = onTogglePinnedFile,
+                                            onClick = onFileClick
+                                        )
+                                    }
+                                }
+
+                                // Recovery card: one message that names what happened and what to do next.
+                                // When sources are missing but partial results exist, keep the standalone CTA.
+                                val noResults = filteredApps.isEmpty() && contacts.isEmpty() && files.isEmpty()
+                                val missingPermissions = !hasContactPermission || !hasFilePermission
+                                if (noResults) {
+                                    item {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 24.dp)
+                                                .padding(top = 48.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = "No matches for \"$query\"",
+                                                color = Color.White.copy(alpha = 0.85f),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Text(
+                                                text = if (missingPermissions)
+                                                    "Try fewer letters, or add contacts and files to results."
+                                                else
+                                                    "Try fewer letters, or check the spelling.",
+                                                color = Color.White.copy(alpha = 0.55f),
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            if (missingPermissions) {
+                                                AddSourcesRow(
+                                                    missingContacts = !hasContactPermission,
+                                                    missingFiles = !hasFilePermission,
+                                                    onAddContacts = requestContacts,
+                                                    onAddFiles = requestFiles,
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else if (missingPermissions) {
+                                    item {
+                                        AddSourcesRow(
+                                            missingContacts = !hasContactPermission,
+                                            missingFiles = !hasFilePermission,
+                                            onAddContacts = requestContacts,
+                                            onAddFiles = requestFiles,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -572,101 +601,101 @@ fun UniversalSearchOverlay(
     }
 }
 
-@Composable
-private fun SearchSectionHeader(title: String) {
-    // No backdrop — the label floats on the glass panel; a band here always read as an artifact
-    Text(
-        text = title,
-        color = OrangePrimary,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 4.dp)
-    )
-}
+    @Composable
+    private fun SearchSectionHeader(title: String) {
+        // No backdrop — the label floats on the glass panel; a band here always read as an artifact
+        Text(
+            text = title,
+            color = OrangePrimary,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 4.dp)
+        )
+    }
 
-@Composable
-private fun AddSourcesRow(
-    missingContacts: Boolean,
-    missingFiles: Boolean,
-    onAddContacts: () -> Unit,
-    onAddFiles: () -> Unit,
-) {
-    if (!missingContacts && !missingFiles) return
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (missingContacts) {
-            TextButton(onClick = onAddContacts) {
-                Text("Add contacts to results", color = OrangePrimary)
+    @Composable
+    private fun AddSourcesRow(
+        missingContacts: Boolean,
+        missingFiles: Boolean,
+        onAddContacts: () -> Unit,
+        onAddFiles: () -> Unit,
+    ) {
+        if (!missingContacts && !missingFiles) return
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (missingContacts) {
+                TextButton(onClick = onAddContacts) {
+                    Text("Add contacts to results", color = OrangePrimary)
+                }
             }
-        }
-        if (missingFiles) {
-            TextButton(onClick = onAddFiles) {
-                Text("Add files to results", color = OrangePrimary)
+            if (missingFiles) {
+                TextButton(onClick = onAddFiles) {
+                    Text("Add files to results", color = OrangePrimary)
+                }
             }
         }
     }
-}
 
-@Composable
-private fun AppsGrid(
-    apps: List<AppModel>,
-    onAppClick: (AppModel) -> Unit,
-    onTogglePinned: (AppModel) -> Unit,
-    focusModeEnabled: Boolean = false
-) {
-    val context = LocalContext.current
-    val rows = (apps.size + 3) / 4
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (i in 0 until rows) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                for (j in 0 until 4) {
-                    val index = i * 4 + j
-                    if (index < apps.size) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            AppIcon(
-                                app = apps[index],
-                                onAppClick = onAppClick,
-                                gridColumns = 4,
-                                isGrayscale = focusModeEnabled && !apps[index].isEssential,
-                                onTogglePinned = { onTogglePinned(apps[index]) },
-                                isUninstallable = apps[index].isUninstallable,
-                                onUninstall = {
-                                    try {
-                                        context.startActivity(
-                                            android.content.Intent(
-                                                android.content.Intent.ACTION_DELETE,
+    @Composable
+    private fun AppsGrid(
+        apps: List<AppModel>,
+        onAppClick: (AppModel) -> Unit,
+        onTogglePinned: (AppModel) -> Unit,
+        focusModeEnabled: Boolean = false
+    ) {
+        val context = LocalContext.current
+        val rows = (apps.size + 3) / 4
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (i in 0 until rows) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    for (j in 0 until 4) {
+                        val index = i * 4 + j
+                        if (index < apps.size) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                AppIcon(
+                                    app = apps[index],
+                                    onAppClick = onAppClick,
+                                    gridColumns = 4,
+                                    isGrayscale = focusModeEnabled && !apps[index].isEssential,
+                                    onTogglePinned = { onTogglePinned(apps[index]) },
+                                    isUninstallable = apps[index].isUninstallable,
+                                    onUninstall = {
+                                        try {
+                                            context.startActivity(
+                                                android.content.Intent(
+                                                    android.content.Intent.ACTION_DELETE,
+                                                    android.net.Uri.fromParts("package", apps[index].packageName, null)
+                                                )
+                                            )
+                                        } catch (e: Exception) {
+                                            Log.w("UniversalSearchOverlay", "Uninstall launch failed for ${apps[index].packageName}", e)
+                                        }
+                                    },
+                                    onAppInfo = {
+                                        try {
+                                            val intent = android.content.Intent(
+                                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                                 android.net.Uri.fromParts("package", apps[index].packageName, null)
                                             )
-                                        )
-                                    } catch (e: Exception) {
-                                        Log.w("UniversalSearchOverlay", "Uninstall launch failed for ${apps[index].packageName}", e)
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Log.w("UniversalSearchOverlay", "App Info launch failed for ${apps[index].packageName}", e)
+                                        }
                                     }
-                                },
-                                onAppInfo = {
-                                    try {
-                                        val intent = android.content.Intent(
-                                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                            android.net.Uri.fromParts("package", apps[index].packageName, null)
-                                        )
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Log.w("UniversalSearchOverlay", "App Info launch failed for ${apps[index].packageName}", e)
-                                    }
-                                }
-                            )
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
         }
     }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -852,15 +881,28 @@ private fun ContactItem(contact: ContactModel, query: String, onClick: (ContactM
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FileItem(file: FileModel, query: String, onClick: (FileModel) -> Unit) {
+private fun FileItem(
+    file: FileModel,
+    query: String,
+    isPinned: Boolean,
+    onTogglePinned: (FileModel) -> Unit,
+    onClick: (FileModel) -> Unit,
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val rowShape = RoundedCornerShape(16.dp)
+    var showMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(rowShape)
-            .clickable(interactionSource = interactionSource, indication = null) { onClick(file) }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = { onClick(file) },
+                onLongClick = { showMenu = true }
+            )
             .glassPress(interactionSource, rowShape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -887,6 +929,24 @@ private fun FileItem(file: FileModel, query: String, onClick: (FileModel) -> Uni
                 text = if (ext.isNotEmpty()) "$ext · $sizeText" else sizeText,
                 color = Color.White.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.bodySmall
+            )
+        }
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.background(Color.Black.copy(alpha = 0.7f))
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        if (isPinned) "Remove from Essentials" else "Add to Essentials",
+                        color = Color.White
+                    )
+                },
+                onClick = {
+                    showMenu = false
+                    onTogglePinned(file)
+                }
             )
         }
     }

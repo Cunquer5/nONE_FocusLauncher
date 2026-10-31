@@ -71,6 +71,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -78,6 +79,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.nonelauncher.data.model.AppModel
 import com.example.nonelauncher.ui.theme.LiquidGlassStyle
+import com.example.nonelauncher.ui.theme.LocalHazeState
 import com.example.nonelauncher.ui.theme.OrangePrimary
 import com.example.nonelauncher.ui.theme.SquircleShapes
 import com.example.nonelauncher.ui.theme.liquidGlass
@@ -85,6 +87,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -112,9 +115,14 @@ private val ARC_MAX_RADIUS = 320.dp
 private val APEX_LIFT = 160.dp
 
 // Angular pitch, not radius, is what makes an arc read as an arc: the sag between the apex and
-// the outer seats is R(1 - cos 2θ), so a shallow pitch looks like a straight shelf at any size.
-private const val DEGREES_PER_ITEM = 20f
-private const val ARC_HALF_SPAN_DEG = 50f
+// the outer seats is R(1 - cos θ), so a shallow pitch looks like a straight shelf at any size.
+// 30° and a 0.56-of-width radius put the next seat either side off the display: a row is three
+// discs, and the wheel reads as turning rather than as a strip of five.
+private const val DEGREES_PER_ITEM = 30f
+
+// The two disc diameters of a row: the apex is held forward, the seats either side sit back.
+private const val SEAT_APEX_DP = 80f
+private const val SEAT_SIDE_DP = 68f
 
 /**
  * The home app surface: glass seats on a hairline arc above the bottom edge.
@@ -198,17 +206,17 @@ fun ArcDial(
     ) {
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
-        // Fit two seats either side of the apex inside the screen: 0.44 of the width is the
-        // outer seat's centre, which leaves its whole disc on screen at every density.
+        // Three seats to a row: 0.56 of the width as the radius keeps the discs either side of the
+        // apex fully on screen while the next one starts past the edge.
         val pitchRad = Math.toRadians((DEGREES_PER_ITEM * 2f).toDouble()).toFloat()
         val radiusPx = min(
             with(density) { ARC_MAX_RADIUS.toPx() },
-            (widthPx * 0.44f) / sin(pitchRad)
+            (widthPx * 0.56f) / sin(pitchRad)
         )
         val apexY = heightPx - with(density) { APEX_LIFT.toPx() }
         val cx = widthPx / 2f
         val itemArcPx = radiusPx * (DEGREES_PER_ITEM * PI.toFloat() / 180f)
-        val labelLiftPx = with(density) { 40.dp.toPx() }
+        val labelLiftPx = with(density) { 56.dp.toPx() }
         val labelAlpha = ((reveal.value - 0.45f) / 0.55f).coerceIn(0f, 1f)
 
         val dragState = rememberDraggableState { delta ->
@@ -294,24 +302,36 @@ fun ArcDial(
                     val fade = reveal.value.toFloat()
                     // The wheel's centre sits a radius below the apex, off the bottom of the box.
                     val centreY = apexY + radiusPx
-                    drawArc(
-                        color = Color.White.copy(alpha = 0.14f * fade),
-                        startAngle = 270f - ARC_HALF_SPAN_DEG,
-                        sweepAngle = ARC_HALF_SPAN_DEG * 2f,
-                        useCenter = false,
-                        topLeft = Offset(cx - radiusPx, centreY - radiusPx),
-                        size = Size(radiusPx * 2f, radiusPx * 2f),
-                        style = Stroke(
-                            width = 1.dp.toPx(),
-                            cap = StrokeCap.Round
+                    // The track only bridges the gaps between seats. A continuous arc shows
+                    // through the tinted glass as a scratch across every disc.
+                    val apexHalfDeg = seatHalfAngle(SEAT_APEX_DP, radiusPx, density)
+                    val sideHalfDeg = seatHalfAngle(SEAT_SIDE_DP, radiusPx, density)
+                    val gapSweep = (DEGREES_PER_ITEM - sideHalfDeg) - apexHalfDeg
+                    val trackTopLeft = Offset(cx - radiusPx, centreY - radiusPx)
+                    val trackSize = Size(radiusPx * 2f, radiusPx * 2f)
+                    for (start in floatArrayOf(
+                        270f - (DEGREES_PER_ITEM - sideHalfDeg),
+                        270f + apexHalfDeg
+                    )) {
+                        drawArc(
+                            color = Color.White.copy(alpha = 0.14f * fade),
+                            startAngle = start,
+                            sweepAngle = gapSweep,
+                            useCenter = false,
+                            topLeft = trackTopLeft,
+                            size = trackSize,
+                            style = Stroke(
+                                width = 1.dp.toPx(),
+                                cap = StrokeCap.Round
+                            )
                         )
-                    )
+                    }
 
                     // Scale ticks sit in the gaps between seats, never under them, so the track
                     // does not read as a scratch across the icons.
                     val inner = radiusPx - 2.dp.toPx()
                     val outer = radiusPx - 11.dp.toPx()
-                    for (half in -3..2) {
+                    for (half in -1..0) {
                         val radians = Math.toRadians(((half + 0.5f) * DEGREES_PER_ITEM).toDouble())
                         drawLine(
                             color = Color.White.copy(alpha = 0.2f * fade),
@@ -331,8 +351,8 @@ fun ArcDial(
                     // The one accent on the surface: the index mark under the selected seat.
                     drawLine(
                         color = OrangePrimary.copy(alpha = 0.92f * fade),
-                        start = Offset(cx, centreY - (radiusPx - 38.dp.toPx())),
-                        end = Offset(cx, centreY - (radiusPx - 50.dp.toPx())),
+                        start = Offset(cx, centreY - (radiusPx - 46.dp.toPx())),
+                        end = Offset(cx, centreY - (radiusPx - 58.dp.toPx())),
                         strokeWidth = 4.dp.toPx(),
                         cap = StrokeCap.Round
                     )
@@ -342,10 +362,12 @@ fun ArcDial(
             entries.forEachIndexed { index, entry ->
                 val steps = signedSteps(index, rotation.value, countF)
                 val distance = abs(steps)
-                val baseAlpha = if (distance <= 2f) {
-                    1f - 0.22f * distance
+                // Only the seat either side of the apex is part of the row; the next one fades in
+                // from the edge as it turns toward the apex.
+                val baseAlpha = if (distance <= 1f) {
+                    1f - 0.18f * distance
                 } else {
-                    ((2.6f - distance) / 0.6f) * 0.56f
+                    0.82f * (2f - distance).coerceIn(0f, 1f)
                 }
                 val nodeAlpha = (baseAlpha * reveal.value).coerceIn(0f, 1f)
                 if (nodeAlpha <= 0.02f) return@forEachIndexed
@@ -355,7 +377,7 @@ fun ArcDial(
                 val x = cx + r * sin(radians).toFloat()
                 val y = apexY + r * (1f - cos(radians).toFloat())
 
-                val nodeDp = lerpDp(64f, 46f, (distance / 2f).coerceIn(0f, 1f))
+                val nodeDp = lerpDp(SEAT_APEX_DP, SEAT_SIDE_DP, distance.coerceIn(0f, 1f))
                 val nodePx = with(density) { nodeDp.toPx() }
                 val seatScale = (0.72f + 0.28f * reveal.value) * (1f - 0.04f * min(distance, 1f))
                 val isApex = index == selected
@@ -428,17 +450,17 @@ fun ArcDial(
                     if (label != null) {
                         Text(
                             text = label,
-                            color = Color.White.copy(alpha = 0.92f),
+                            color = Color.White.copy(alpha = 0.95f),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             letterSpacing = 0.2.sp,
-                            // The label floats on the wallpaper, not on glass; a soft shadow
-                            // holds it against a bright photo.
+                            // The label floats on the wallpaper, not on glass; a two-stop shadow
+                            // holds it against a bright sky without adding a pill to the page.
                             style = TextStyle(
                                 shadow = Shadow(
-                                    color = Color.Black.copy(alpha = 0.6f),
-                                    offset = Offset(0f, 1f),
-                                    blurRadius = 10f
+                                    color = Color.Black.copy(alpha = 0.72f),
+                                    offset = Offset(0f, 1.5f),
+                                    blurRadius = 14f
                                 )
                             ),
                             maxLines = 1,
@@ -475,14 +497,12 @@ private fun DialNode(
                 scaleX = pressScale
                 scaleY = pressScale
             }
-            // Dense, non-sampling glass. The wheel redraws every dragged frame, and a blurred
-            // child per seat both costs a backdrop pass per disc and leaves its layer behind on
-            // some GPUs when the dial retracts. The tint still carries the wallpaper's colour.
+            // A disc this small reads as smoked plastic under a sheet's tint, so the seat's tint is
+            // thinner and the blur longer: the wallpaper has to move visibly under the glass.
             .liquidGlass(
-                hazeState = null,
+                hazeState = LocalHazeState.current,
                 shape = CircleShape,
                 style = if (isApex) LiquidGlassStyle.SeatApex else LiquidGlassStyle.Seat,
-                sampling = false,
             )
             .clickable(
                 interactionSource = interaction,
@@ -512,7 +532,8 @@ private fun DialNode(
             is DialEntry.Action -> when (entry.action) {
                 DialAction.ONE_THING -> Text(
                     text = "1",
-                    color = OrangePrimary,
+                    // Orange marks the selection; a side seat wearing it would outrank the apex.
+                    color = if (isApex) OrangePrimary else Color.White.copy(alpha = 0.9f),
                     fontWeight = FontWeight.Bold,
                     fontSize = with(density) { (size.toPx() * 0.5f).toSp() },
                     lineHeight = with(density) { (size.toPx() * 0.56f).toSp() }
@@ -566,3 +587,9 @@ private fun normalize(value: Float, count: Float): Float {
 
 private fun lerpDp(start: Float, end: Float, fraction: Float): Dp =
     (start + (end - start) * fraction).dp
+
+/** Half the angle a seat of [seatDp] covers where its centre sits on the arc. */
+private fun seatHalfAngle(seatDp: Float, radiusPx: Float, density: Density): Float {
+    val ratio = (with(density) { seatDp.dp.toPx() } / 2f / radiusPx).coerceIn(0f, 1f)
+    return Math.toDegrees(asin(ratio.toDouble())).toFloat()
+}

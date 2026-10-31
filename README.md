@@ -40,6 +40,25 @@
 
 ## Changelog
 
+### v1.4.3 - October 29, 2026
+
+#### Design
+- **No top bar**: the status bar's icons sit straight on the wallpaper, which carries its own top dim; nothing is laid across the page to hold them.
+- **Bottom sheets**: the four sheets and search are welded to the bottom edge — square bottom corners, 32dp on the top two — and stop 14% short of the top, so wallpaper frames the glass. Every sheet carries a grabber: pull it down and the card follows the finger, springs back on a short pull, and slides away past the threshold.
+- **Liquid glass over the real wallpaper**: the launcher draws the device wallpaper in the composition so the blur samples the actual image, through a single Haze source.
+- **Glass dial**: the wheel's seats now blur the wallpaper like every other surface — 22dp blur under a lighter tint, so the ground moves visibly under each disc while the rim holds the edge.
+- **Three-disc row**: seats grow to 80dp at the apex and 68dp either side, with the arc pitch widened to 30°, so exactly three discs hold the row and the rest turn in from past the edge.
+
+#### Fixes
+- Cards no longer end on a slanted edge where the bottom round was anchored outside the card.
+- Glass no longer degrades to a flat tint, and no longer shows a sharp rectangle where the backdrop stopped painting.
+- Chips, discs and glyphs stay aligned to the same backdrop.
+- The dial's hairline track now stops at each disc's rim instead of reading through the glass as a scratch, and the unselected `1 Thing` glyph is white so only the apex carries orange.
+- The apex label's shadow is deeper, and the resting dot sits on a soft drop shadow at 55% white so it reads on a bright wallpaper.
+
+#### Permissions
+- The welcome flow asks once for the wallpaper access Android 15 requires; the ground re-reads on wallpaper change and on resume.
+
 ### v1.4.2 - May 19, 2026
 
 #### Features

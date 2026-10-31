@@ -89,6 +89,23 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         apps.map { it.copy(isPinned = it.packageName in shelf) }
     }
 
+    // Files share the Essentials shelf but have no auto-detected default, so the shelf is exactly
+    // what was picked — resolved through MediaStore so a deleted file drops out by itself.
+    val pinnedFiles: StateFlow<List<FileModel>> = prefsRepository.pinnedFileUris
+        .map { uris -> if (uris.isEmpty()) emptyList() else fileRepository.getFilesByUris(uris) }
+        .flowOn(Dispatchers.IO)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun togglePinnedFile(file: FileModel) {
+        val shelf = prefsRepository.pinnedFileUris.value
+        val uri = file.uri.toString()
+        prefsRepository.setPinnedFileUris(if (uri in shelf) shelf - uri else shelf + uri)
+    }
+
     val uiState: StateFlow<HomeUiState> = combine(
         appsWithPins,
         allIntentions,

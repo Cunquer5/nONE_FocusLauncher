@@ -5,7 +5,9 @@ import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +66,10 @@ fun LauncherScreen() {
     var showFirstLaunchWelcome by remember { mutableStateOf(false) }
     var showFeedbackPrompt by remember { mutableStateOf(false) }
     var wallpaperRefresh by remember { mutableIntStateOf(0) }
+    val hazeState = remember { HazeState() }
+    var groundLoaded by remember { mutableStateOf<Boolean?>(null) }
+    var groundPromptDismissed by rememberSaveable { mutableStateOf(false) }
+    var wallpaperAccess by remember { mutableStateOf(canReadWallpaper(context)) }
     val prefsRepository = remember { UserPreferencesRepository(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -72,19 +79,23 @@ fun LauncherScreen() {
         isDefaultLauncher = isDefaultLauncher(context)
     }
 
-    // Reading the static wallpaper needs photo access (or all-files) on Android 13+; without it
-    // the system wallpaper shows through the window but glass has nothing in-tree to sample.
-    val wallpaperAccessPermission =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-    val wallpaperAccessLauncher = rememberLauncherForActivityResult(
+    // Reading the static wallpaper is gated by storage access: all-files on Android 11+, the
+    // legacy read permission below it. Without either, the system wallpaper shows through the
+    // window but glass has nothing in-tree to sample.
+    val legacyStorageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { _ ->
         // Granting does not change the wallpaper id, so ask the ground to re-read explicitly.
         wallpaperRefresh++
+    }
+    val requestWallpaperAccess: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            openAllFilesAccessSettings(context)
+        } else {
+            runCatching {
+                legacyStorageLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -92,6 +103,13 @@ fun LauncherScreen() {
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     isDefaultLauncher = isDefaultLauncher(context)
+                    // Returning from the access settings screen: the wallpaper only becomes
+                    // readable now, so re-read the ground.
+                    val nowAccess = canReadWallpaper(context)
+                    if (nowAccess != wallpaperAccess) {
+                        wallpaperAccess = nowAccess
+                        wallpaperRefresh++
+                    }
                     val prompts = prefsRepository.onAppResume(isDefaultLauncher(context))
                     when {
                         prompts.showFirstLaunchWelcome -> showFirstLaunchWelcome = true
@@ -106,8 +124,6 @@ fun LauncherScreen() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val hazeState = remember { HazeState() }
-
     Box(modifier = Modifier.fillMaxSize()) {
         // The ground every glass surface samples. Drawn by the app rather than by the window
         // manager, so blur, dimming and wallpaper changes stay under our control.
@@ -115,6 +131,7 @@ fun LauncherScreen() {
             modifier = Modifier.fillMaxSize(),
             hazeState = hazeState,
             refreshKey = wallpaperRefresh,
+            onLoadResult = { groundLoaded = it },
         )
 
         CompositionLocalProvider(LocalHazeState provides hazeState) {
@@ -177,23 +194,24 @@ fun LauncherScreen() {
                 )
             }
 
+            // Without a readable wallpaper there is nothing for glass to blur: surfaces fall
+            // back to a flat tint over the system wallpaper. All-files access is the only door
+            // the wallpaper service opens to a target-34 app on Android 11+.
+            if (groundLoaded == false && !groundPromptDismissed && !showFirstLaunchWelcome) {
+                WallpaperAccessPrompt(
+                    onOpenSettings = requestWallpaperAccess,
+                    onDismiss = { groundPromptDismissed = true },
+                )
+            }
+
             if (showFirstLaunchWelcome) {
                 WelcomeFirstLaunchDialog(
                     isDefaultLauncher = isDefaultLauncher,
-                    needsWallpaperAccess = ContextCompat.checkSelfPermission(
-                        context,
-                        wallpaperAccessPermission
-                    ) != PackageManager.PERMISSION_GRANTED,
+                    needsWallpaperAccess = !wallpaperAccess,
                     onGetStarted = {
                         prefsRepository.markFirstLaunchWelcomeShown()
                         showFirstLaunchWelcome = false
-                        val granted = ContextCompat.checkSelfPermission(
-                            context,
-                            wallpaperAccessPermission
-                        ) == PackageManager.PERMISSION_GRANTED
-                        if (!granted) {
-                            runCatching { wallpaperAccessLauncher.launch(wallpaperAccessPermission) }
-                        }
+                        if (!wallpaperAccess) requestWallpaperAccess()
                     },
                 )
             }
@@ -216,6 +234,76 @@ fun LauncherScreen() {
                         showFeedbackPrompt = false
                     },
                 )
+            }
+        }
+    }
+}
+
+/**
+ * A wallpaper surface is what glass samples. All-files access is the only way a target-34 app
+ * can read the system wallpaper on Android 11+ — the media permission is not enough there.
+ */
+private fun canReadWallpaper(context: Context): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Environment.isExternalStorageManager()
+    } else {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+private fun openAllFilesAccessSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+    val appPage = Intent(
+        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+        Uri.parse("package:${context.packageName}"),
+    )
+    runCatching { context.startActivity(appPage) }.onFailure {
+        runCatching {
+            context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+        }
+    }
+}
+
+@Composable
+private fun WallpaperAccessPrompt(onOpenSettings: () -> Unit, onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        LiquidGlassPanel(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            style = LiquidGlassStyle.Regular,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "Glass needs wallpaper access",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                )
+                Text(
+                    text = "Allow nONE to read your wallpaper so the blur samples the real thing.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.72f),
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Button(onClick = onOpenSettings, modifier = Modifier.weight(1f)) {
+                        Text("Open settings")
+                    }
+                    TextButton(onClick = onDismiss) {
+                        Text("Later", color = Color.White.copy(alpha = 0.8f))
+                    }
+                }
             }
         }
     }

@@ -38,7 +38,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
@@ -57,16 +57,17 @@ fun WallpaperBackground(
     modifier: Modifier = Modifier,
     hazeState: HazeState,
     refreshKey: Int = 0,
+    onLoadResult: (Boolean) -> Unit = {},
 ) {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             // Everything inside — wallpaper and scrim — is the source glass samples.
-            .haze(hazeState)
+            .hazeSource(hazeState)
     ) {
         val widthPx = constraints.maxWidth
         val heightPx = constraints.maxHeight
-        val wallpaper = rememberWallpaperBitmap(widthPx, heightPx, refreshKey)
+        val wallpaper = rememberWallpaperBitmap(widthPx, heightPx, refreshKey, onLoadResult)
         val wallpaperAlpha by animateFloatAsState(
             targetValue = if (wallpaper != null) 1f else 0f,
             animationSpec = tween(durationMillis = 260),
@@ -105,7 +106,12 @@ fun WallpaperBackground(
 }
 
 @Composable
-private fun rememberWallpaperBitmap(widthPx: Int, heightPx: Int, refreshKey: Int): ImageBitmap? {
+private fun rememberWallpaperBitmap(
+    widthPx: Int,
+    heightPx: Int,
+    refreshKey: Int,
+    onLoadResult: (Boolean) -> Unit,
+): ImageBitmap? {
     val context = LocalContext.current.applicationContext
     val lifecycleOwner = LocalLifecycleOwner.current
     var version by remember { mutableIntStateOf(wallpaperVersion(context)) }
@@ -136,9 +142,11 @@ private fun rememberWallpaperBitmap(widthPx: Int, heightPx: Int, refreshKey: Int
     }
 
     val bitmap by produceState<ImageBitmap?>(initialValue = null, version, refreshKey, widthPx, heightPx) {
-        value = withContext(Dispatchers.IO) {
+        val loaded = withContext(Dispatchers.IO) {
             loadWallpaperBitmap(context, widthPx, heightPx)
         }
+        value = loaded
+        onLoadResult(loaded != null)
     }
     return bitmap
 }
@@ -150,36 +158,54 @@ private fun wallpaperVersion(context: Context): Int = runCatching {
 private fun loadWallpaperBitmap(context: Context, widthPx: Int, heightPx: Int): ImageBitmap? {
     if (widthPx <= 0 || heightPx <= 0) return null
     return try {
-        val drawable = WallpaperManager.getInstance(context).drawable ?: return null
+        val manager = WallpaperManager.getInstance(context)
+        // getDrawable() asks the wallpaper service for READ_EXTERNAL_STORAGE, which a target-34
+        // app can no longer hold on some ROMs. The wallpaper file descriptor is the second door.
+        val drawable = runCatching { manager.drawable }.getOrNull()
+        val source = (drawable as? BitmapDrawable)?.bitmap
+            ?: runCatching {
+                manager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM)?.use { file ->
+                    android.graphics.BitmapFactory.decodeFileDescriptor(file.fileDescriptor)
+                }
+            }.getOrNull()
+            ?: return drawable?.let { renderDrawable(it, widthPx, heightPx) }
+
+        if (source.width <= 0 || source.height <= 0) return null
         val target = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(target)
-        val source = (drawable as? BitmapDrawable)?.bitmap
-        if (source != null && source.width > 0 && source.height > 0) {
-            // Centre-crop the wallpaper to the window instead of stretching it.
-            val scale = max(widthPx / source.width.toFloat(), heightPx / source.height.toFloat())
-            val srcWidth = widthPx / scale
-            val srcHeight = heightPx / scale
-            val left = (source.width - srcWidth) / 2f
-            val top = (source.height - srcHeight) / 2f
-            canvas.drawBitmap(
-                source,
-                Rect(
-                    left.roundToInt(),
-                    top.roundToInt(),
-                    (left + srcWidth).roundToInt(),
-                    (top + srcHeight).roundToInt()
-                ),
-                RectF(0f, 0f, widthPx.toFloat(), heightPx.toFloat()),
-                Paint(Paint.FILTER_BITMAP_FLAG)
-            )
-        } else {
-            drawable.setBounds(0, 0, widthPx, heightPx)
-            drawable.draw(canvas)
-        }
+        // Centre-crop the wallpaper to the window instead of stretching it.
+        val scale = max(widthPx / source.width.toFloat(), heightPx / source.height.toFloat())
+        val srcWidth = widthPx / scale
+        val srcHeight = heightPx / scale
+        val left = (source.width - srcWidth) / 2f
+        val top = (source.height - srcHeight) / 2f
+        canvas.drawBitmap(
+            source,
+            Rect(
+                left.roundToInt(),
+                top.roundToInt(),
+                (left + srcWidth).roundToInt(),
+                (top + srcHeight).roundToInt()
+            ),
+            RectF(0f, 0f, widthPx.toFloat(), heightPx.toFloat()),
+            Paint(Paint.FILTER_BITMAP_FLAG)
+        )
         target.asImageBitmap()
     } catch (t: Throwable) {
         // Live wallpapers and locked-down ROMs may refuse a static bitmap; the fallback ground shows.
         android.util.Log.w("WallpaperBackground", "static wallpaper unavailable", t)
         null
     }
+}
+
+private fun renderDrawable(
+    drawable: android.graphics.drawable.Drawable,
+    widthPx: Int,
+    heightPx: Int,
+): ImageBitmap {
+    val target = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(target)
+    drawable.setBounds(0, 0, widthPx, heightPx)
+    drawable.draw(canvas)
+    return target.asImageBitmap()
 }

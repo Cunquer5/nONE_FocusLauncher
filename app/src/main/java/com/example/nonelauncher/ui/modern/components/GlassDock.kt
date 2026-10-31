@@ -2,7 +2,6 @@ package com.example.nonelauncher.ui.modern.components
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,11 +21,9 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.nonelauncher.ui.theme.HazeGlassMorphism
+import com.example.nonelauncher.ui.theme.LiquidGlassStyle
+import com.example.nonelauncher.ui.theme.liquidGlass
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeStyle
 
 @Composable
 fun GlassDock(
@@ -37,109 +34,93 @@ fun GlassDock(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // One glass surface. A second `haze()` source used to live in this box, which made the
+    // dock sample its own empty layer instead of the wallpaper and offset the blur.
     Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 32.dp)
             .height(80.dp)
+            .liquidGlass(
+                hazeState = hazeState,
+                shape = RoundedCornerShape(40.dp),
+                style = LiquidGlassStyle.Regular.copy(
+                    blurRadius = 24.dp,
+                    tint = Color(0xFF0A0A0B).copy(alpha = 0.42f),
+                    innerShade = 0.16f,
+                ),
+            )
     ) {
-        // LAYER 1: Background with Haze blur
-        Box(
+        Row(
             modifier = Modifier
-                .matchParentSize()
-                .haze(
-                    state = hazeState,
-                    style = HazeStyle(tint = Color.Transparent)
-                )
-        )
-
-        // LAYER 2: Glass surface + content
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(40.dp))
-                .hazeChild(
-                    state = hazeState,
-                    style = HazeStyle(blurRadius = 20.dp)
-                )
-                .background(Color(0xFF0F0F0F).copy(alpha = 0.55f))
-                .border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.25f),
-                    shape = RoundedCornerShape(40.dp)
-                )
+                .fillMaxSize()
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Phone
-                DockItem(
-                    icon = Icons.Default.Call,
-                    label = "Phone",
-                    isActive = activeItem == DockItemType.PHONE,
-                    onClick = onPhoneClick,
-                    showLabel = true
-                )
+            // Phone
+            DockItem(
+                icon = Icons.Default.Call,
+                label = "Phone",
+                isActive = activeItem == DockItemType.PHONE,
+                onClick = onPhoneClick,
+                showLabel = true
+            )
 
-                // 1 Thing — centre focal item. Active plate, label rhythm and expand
-                // direction match the sibling DockItems exactly.
-                Box(
-                    modifier = Modifier
-                        .height(63.dp)
-                        .clip(RoundedCornerShape(33.dp))
-                        .then(
-                            if (activeItem == DockItemType.ONE_THING)
-                                Modifier.background(Color.Black.copy(alpha = 0.55f))
-                            else Modifier
+            // 1 Thing — centre focal item. Active plate, label rhythm and expand
+            // direction match the sibling DockItems exactly.
+            Box(
+                modifier = Modifier
+                    .height(63.dp)
+                    .clip(RoundedCornerShape(33.dp))
+                    .then(
+                        if (activeItem == DockItemType.ONE_THING)
+                            Modifier.background(Color.Black.copy(alpha = 0.55f))
+                        else Modifier
+                    )
+                    .clickable(onClick = onOneThingClick)
+                    .clearAndSetSemantics { contentDescription = "1 Thing" }
+                    .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 12.dp else 0.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "1",
+                            color = Color(0xFFFF4D00),
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold
                         )
-                        .clickable(onClick = onOneThingClick)
-                        .clearAndSetSemantics { contentDescription = "1 Thing" }
-                        .padding(horizontal = if (activeItem == DockItemType.ONE_THING) 12.dp else 0.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(48.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "1",
-                                color = Color(0xFFFF4D00),
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        AnimatedVisibility(
-                            visible = activeItem == DockItemType.ONE_THING,
-                            enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
-                            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
-                        ) {
-                            Text(
-                                text = "Thing",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                softWrap = false,
-                                modifier = Modifier.padding(start = 4.dp)
-                            )
-                        }
+                    }
+                    AnimatedVisibility(
+                        visible = activeItem == DockItemType.ONE_THING,
+                        enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
+                    ) {
+                        Text(
+                            text = "Thing",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
                     }
                 }
-
-                // Settings
-                DockItem(
-                    icon = Icons.Default.Settings,
-                    label = "Settings",
-                    isActive = activeItem == DockItemType.SETTINGS,
-                    onClick = onSettingsClick,
-                    showLabel = true
-                )
             }
+
+            // Settings
+            DockItem(
+                icon = Icons.Default.Settings,
+                label = "Settings",
+                isActive = activeItem == DockItemType.SETTINGS,
+                onClick = onSettingsClick,
+                showLabel = true
+            )
         }
     }
 }

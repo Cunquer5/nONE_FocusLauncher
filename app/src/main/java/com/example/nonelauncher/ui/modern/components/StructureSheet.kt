@@ -37,7 +37,8 @@ fun StructureSheet(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(start = 24.dp, top = 36.dp, end = 24.dp, bottom = 24.dp)
+                .navigationBarsPadding()
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

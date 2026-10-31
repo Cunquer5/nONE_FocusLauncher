@@ -2,7 +2,6 @@ package com.example.nonelauncher.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -17,18 +16,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 
 /**
  * The one Haze source for the window, provided above every surface. Glass children sample the
@@ -38,17 +39,26 @@ import dev.chrisbanes.haze.hazeChild
 val LocalHazeState = compositionLocalOf<HazeState?> { null }
 
 /**
- * Liquid glass: blurred ground, a low dark tint, a light sheen from above and a specular rim that
- * fades toward the lower-right. Values are tuned for white type over a user's own wallpaper.
+ * Liquid glass: a blurred, tinted sample of the ground under a lensing edge.
+ *
+ * The optic is built from the same [Shape] as the clip — backdrop, sheen, bottom thickness and
+ * specular rim all share one outline, so nothing can drift from the surface it belongs to.
+ *
+ * No platform elevation shadow: Compose draws a shadow's silhouette behind the node, and behind a
+ * translucent tint that silhouette reads as a flat darkening of the glass itself (and on some
+ * devices is sliced away in a rectangle). Depth comes from the tint, the rim and the inner shade.
  */
 @Immutable
 data class LiquidGlassStyle(
     val blurRadius: Dp = 24.dp,
     val tint: Color = Ink.copy(alpha = 0.40f),
-    val rimAlpha: Float = 0.46f,
+    val rimAlpha: Float = 0.52f,
     val sheenAlpha: Float = 0.07f,
     val noise: Float = 0.02f,
-    val shadowElevation: Dp = 0.dp,
+    /** Light gathering along the top edge, the lens reading. */
+    val edgeLight: Float = 0.12f,
+    /** Black thickness gathered along the bottom inner edge. */
+    val innerShade: Float = 0.12f,
 ) {
     fun withTintAlpha(alpha: Float) = copy(tint = tint.copy(alpha = alpha))
 
@@ -57,61 +67,67 @@ data class LiquidGlassStyle(
 
         /** Chips and the 1 Thing island: small, close to the eye. */
         val Thin = LiquidGlassStyle(
-            blurRadius = 16.dp,
-            tint = Ink.copy(alpha = 0.30f),
-            rimAlpha = 0.38f,
-            sheenAlpha = 0.05f,
-            noise = 0.015f,
-            shadowElevation = 8.dp,
+            blurRadius = 18.dp,
+            tint = Ink.copy(alpha = 0.28f),
+            rimAlpha = 0.50f,
+            sheenAlpha = 0.06f,
+            noise = 0.012f,
+            edgeLight = 0.10f,
+            innerShade = 0.08f,
         )
 
         /** Sheets, the search card, dialog panels. */
         val Regular = LiquidGlassStyle(
-            blurRadius = 24.dp,
-            tint = Ink.copy(alpha = 0.40f),
-            rimAlpha = 0.46f,
+            blurRadius = 26.dp,
+            tint = Ink.copy(alpha = 0.38f),
+            rimAlpha = 0.55f,
             sheenAlpha = 0.07f,
             noise = 0.02f,
-            shadowElevation = 16.dp,
+            edgeLight = 0.12f,
+            innerShade = 0.12f,
         )
 
         /** The tallest surface: search over the whole height. */
         val Heavy = LiquidGlassStyle(
-            blurRadius = 30.dp,
-            tint = Ink.copy(alpha = 0.48f),
-            rimAlpha = 0.50f,
-            sheenAlpha = 0.07f,
+            blurRadius = 32.dp,
+            tint = Ink.copy(alpha = 0.46f),
+            rimAlpha = 0.58f,
+            sheenAlpha = 0.08f,
             noise = 0.025f,
-            shadowElevation = 24.dp,
+            edgeLight = 0.12f,
+            innerShade = 0.14f,
         )
 
         /** A small control resting on an existing glass surface; no second backdrop pass. */
         val Control = LiquidGlassStyle(
             blurRadius = 0.dp,
             tint = Ink.copy(alpha = 0.46f),
-            rimAlpha = 0.52f,
-            sheenAlpha = 0.12f,
+            rimAlpha = 0.55f,
+            sheenAlpha = 0.10f,
             noise = 0f,
-            shadowElevation = 0.dp,
+            edgeLight = 0.08f,
+            innerShade = 0.10f,
         )
 
         /**
-         * A seat on the dial. Denser than a panel: white icons and glyphs have to stay legible
-         * while a bright wallpaper passes underneath, and the disc is only 46–64dp wide.
+         * A seat on the dial. A disc this small has to show its backdrop or it reads as a smoked
+         * puck, so the tint stays thin and a long blur does the legibility work instead; the rim
+         * and the inner shade carry the lensing edge against a bright wallpaper.
          */
         val Seat = LiquidGlassStyle(
-            blurRadius = 12.dp,
-            tint = Ink.copy(alpha = 0.52f),
-            rimAlpha = 0.38f,
+            blurRadius = 22.dp,
+            tint = Ink.copy(alpha = 0.30f),
+            rimAlpha = 0.50f,
             sheenAlpha = 0.10f,
             noise = 0f,
-            shadowElevation = 0.dp,
+            edgeLight = 0.12f,
+            innerShade = 0.14f,
         )
 
         /** The seat at the apex: held forward, so its rim and density step up. */
         val SeatApex = Seat.copy(
-            tint = Ink.copy(alpha = 0.64f),
-            rimAlpha = 0.54f,
+            tint = Ink.copy(alpha = 0.40f),
+            rimAlpha = 0.62f,
         )
     }
 }
@@ -135,57 +151,68 @@ fun Modifier.liquidGlass(
         style.tint
     }
     val material = if (canSample) {
-        Modifier.hazeChild(
+        Modifier.hazeEffect(
             state = source,
-            shape = shape,
             style = HazeStyle(
-                tint = tint,
                 blurRadius = style.blurRadius,
+                tint = HazeTint(tint),
                 noiseFactor = style.noise,
-            )
+                fallbackTint = HazeTint(tint),
+            ),
         )
     } else {
         Modifier.background(tint)
     }
-    val rim = Brush.linearGradient(
-        colors = listOf(
-            Color.White.copy(alpha = style.rimAlpha),
-            Color.White.copy(alpha = style.rimAlpha * 0.38f),
-            Color.White.copy(alpha = style.rimAlpha * 0.10f),
-        )
-    )
 
     return this
-        .then(
-            if (style.shadowElevation > 0.dp) {
-                Modifier.shadow(
-                    elevation = style.shadowElevation,
-                    shape = shape,
-                    clip = false,
-                    ambientColor = Color.Black,
-                    spotColor = Color.Black,
-                )
-            } else {
-                Modifier
-            }
-        )
         .clip(shape)
         .then(material)
-        .drawBehind {
-            if (style.sheenAlpha > 0f) {
-                drawRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = style.sheenAlpha),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.5f, -size.height * 0.12f),
-                        radius = size.maxDimension * 0.95f
-                    )
-                )
+        .drawWithCache {
+            // One outline for the clip, the rim and the edge shading: they cannot misalign.
+            val outline = shape.createOutline(size, layoutDirection, this)
+
+            val topSheen = Brush.radialGradient(
+                0f to Color.White.copy(alpha = style.sheenAlpha),
+                0.55f to Color.White.copy(alpha = style.sheenAlpha * 0.22f),
+                1f to Color.Transparent,
+                center = Offset(size.width * 0.5f, -size.height * 0.12f),
+                radius = size.maxDimension * 0.95f,
+            )
+            val topEdge = Brush.verticalGradient(
+                0f to Color.White.copy(alpha = style.edgeLight),
+                0.3f to Color.White.copy(alpha = style.edgeLight * 0.18f),
+                1f to Color.Transparent,
+                startY = 0f,
+                endY = size.height * 0.62f,
+            )
+            val bottomShade = Brush.verticalGradient(
+                0f to Color.Transparent,
+                1f to Color.Black.copy(alpha = style.innerShade),
+                startY = size.height * 0.45f,
+                endY = size.height,
+            )
+            // Bright at the top, thin down the sides, a soft bounce at the bottom.
+            val rim = Brush.linearGradient(
+                0f to Color.White.copy(alpha = style.rimAlpha),
+                0.28f to Color.White.copy(alpha = style.rimAlpha * 0.42f),
+                0.62f to Color.White.copy(alpha = style.rimAlpha * 0.12f),
+                0.86f to Color.White.copy(alpha = style.rimAlpha * 0.32f),
+                1f to Color.White.copy(alpha = style.rimAlpha * 0.50f),
+                start = Offset(0f, 0f),
+                end = Offset(size.width * 0.85f, size.height),
+            )
+            val rimWidth = 1.5.dp.toPx()
+
+            onDrawBehind {
+                drawRect(topSheen)
+                drawRect(topEdge)
+                drawRect(bottomShade)
+            }
+            onDrawWithContent {
+                drawContent()
+                drawOutline(outline, rim, style = Stroke(rimWidth))
             }
         }
-        .border(width = 1.dp, brush = rim, shape = shape)
 }
 
 @Composable
@@ -197,10 +224,17 @@ fun LiquidGlassPanel(
     sampling: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    Box(
-        modifier = modifier.liquidGlass(hazeState, shape, style, sampling),
-        content = content
-    )
+    // The material is its own child, drawn before the content: a focused text field inside the
+    // panel re-composites its own node, and sharing that node with the backdrop left a bare
+    // rectangle where the blur stopped being painted.
+    Box(modifier = modifier) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .liquidGlass(hazeState, shape, style, sampling)
+        )
+        content()
+    }
 }
 
 /**
