@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.sp
 import com.example.nonelauncher.R
 
 /**
- * Departure-board material: matte flap black, steel hairlines, warm paint lettering.
+ * Departure-board material: matte flap black, soft flap cells, warm paint lettering.
  * Orange stays reserved for the one action on a surface and the current row.
  */
 object Board {
@@ -67,8 +67,13 @@ object Board {
     val HairFaint = Color(0xFF1B1E21)
     val Action = OrangePrimary
 
-    val cell = RoundedCornerShape(2.dp)
-    val panel = RoundedCornerShape(2.dp)
+    // One corner language for the whole launcher: flaps are soft, never square. The scale steps
+    // with element size so a 30dp chip and an 80dp dial seat read as the same material.
+    val micro = RoundedCornerShape(8.dp)      // split-flap glyph cells
+    val cell = RoundedCornerShape(16.dp)      // rows, buttons, fields, icon wells
+    val seat = RoundedCornerShape(26.dp)      // dial seats
+    val panel = RoundedCornerShape(28.dp)     // slabs, sheets, search card, dialogs
+    val capsule = RoundedCornerShape(percent = 50) // labels, chips, status tags
 }
 
 // Self-hosted faces: the board's voice is Oswald condensing, Roboto Mono for figures,
@@ -144,7 +149,7 @@ fun BoardPanel(
     Box(
         modifier = modifier
             // Flat console: one matte slab dropped on the wallpaper, no gradient, no highlight.
-            .shadow(elevation = 26.dp, shape = Board.panel, clip = false, spotColor = Color.Black, ambientColor = Color.Black)
+            .shadow(elevation = 18.dp, shape = Board.panel, clip = false, spotColor = Color.Black, ambientColor = Color.Black)
             .clip(Board.panel)
             .background(Board.Ink)
             .border(1.dp, Board.Hair, Board.panel)
@@ -205,9 +210,9 @@ fun FlapWordmark(
                             transformOrigin = TransformOrigin(0.5f, 0.5f)
                             this.cameraDistance = camera
                         }
-                        .clip(Board.cell)
+                        .clip(Board.micro)
                         .background(Board.Flap)
-                        .border(1.dp, Board.Hair, Board.cell),
+                        .border(1.dp, Board.Hair, Board.micro),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
@@ -253,7 +258,7 @@ fun BoardDivider(modifier: Modifier = Modifier, color: Color = Board.HairFaint) 
     Box(modifier = modifier.fillMaxWidth().height(1.dp).background(color))
 }
 
-/** The single action cell on a surface — orange, square-cornered, paint lettering. */
+/** The single action cell on a surface — orange, rounded, paint lettering. */
 @Composable
 fun BoardActionButton(
     text: String,
@@ -316,8 +321,8 @@ fun BoardCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .size(34.dp)
-                .clip(Board.cell)
-                .border(1.dp, Board.Hair, Board.cell),
+                .clip(Board.capsule)
+                .border(1.dp, Board.Hair, Board.capsule),
             contentAlignment = Alignment.Center
         ) {
             Icon(

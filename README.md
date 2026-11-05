@@ -28,7 +28,7 @@
 ## Development
 
 - **App Module**: `app/src/main/java/com/example/nONE launcher`
-- **Home Screen**: `ui/home/HomeScreen.kt`
+- **Home Screen**: `ui/modern/ModernHomeScreen.kt`
 - **Data Layer**: `data/repository`
 
 ## Permissions
@@ -39,6 +39,17 @@
 - `READ_EXTERNAL_STORAGE` / `READ_MEDIA_*`: Required for searching and accessing local files.
 
 ## Changelog
+
+### v1.6.0 - October 31, 2026
+
+#### Arc Dial
+- **Dock re-seated on an arc**: a 30° wheel of matte flap cells replaces the three-cell strip, keeping the board's material, hairlines and orange selection mark.
+- **Fixed seats plus essentials**: 1 Thing, Structure, Search, Settings, Phone, Add apps, then the user's pinned apps.
+- **Spin or tap**: drag horizontally with momentum, tap a side seat to bring it to the apex, tap the apex seat to open it. TalkBack gets Previous/Next actions on the dial.
+- **Apex tagging**: the selected seat is named above the arc ("03 · SEARCH") and marked by an orange index tick.
+- **Opens from the lamp**: tap the bottom dot or swipe up; idle for 3s (15s with TalkBack) and the dial retracts. The lamp has one job — opening the dial; Structure and Search are seats on it.
+- **Soft geometry**: rounded cells, capsules and panels replace the near-square chrome, including a floating 1 Thing band and an inset orange action tile.
+- **One gate**: pinned apps from the dial pass through the same intention dialog as search results.
 
 ### v1.5.0 - October 27, 2026
 

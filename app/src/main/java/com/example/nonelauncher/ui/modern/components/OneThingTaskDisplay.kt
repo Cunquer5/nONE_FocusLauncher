@@ -146,7 +146,7 @@ fun OneThingTaskDisplay(
                         modifier = Modifier
                             .size(30.dp)
                             .clip(Board.cell)
-                            .border(2.dp, if (isCompleted) Board.Action else Board.Ink, Board.cell)
+                            .border(1.dp, if (isCompleted) Board.Action else Board.Ink, Board.cell)
                             .background(if (isCompleted) Board.Action else Color.Transparent, Board.cell),
                         contentAlignment = Alignment.Center
                     ) {

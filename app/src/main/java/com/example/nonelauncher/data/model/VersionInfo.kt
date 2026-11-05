@@ -9,6 +9,22 @@ data class VersionInfo(
 
 val Changelog = listOf(
     VersionInfo(
+        versionName = "1.6.0",
+        versionCode = 12,
+        releaseDate = "2026-10-31",
+        features = listOf(
+            "arc dial: the dock strip is re-seated on a 30° arc in board material",
+            "seats: 1 Thing, Structure, Search, Settings, Phone, Add apps, then pinned apps",
+            "drag the wheel to spin with momentum, tap a side seat to select, tap the apex seat to open",
+            "the selected seat is tagged above the arc; an orange index mark sits under the apex",
+            "tap the bottom lamp or swipe up to reveal the dial; it retracts after 3s idle (15s with TalkBack)",
+            "the lamp only opens the dial — Structure and Search are seats on it",
+            "soft rounded board geometry: rounded cells, capsule chips and panels, a floating 1 Thing band",
+            "the dial shares the intention gate with search, so pinned apps behave the same from either entry",
+            "board material throughout — matte flap cells, steel hairlines, paint glyphs, no glass"
+        )
+    ),
+    VersionInfo(
         versionName = "1.5.0",
         versionCode = 11,
         releaseDate = "2026-10-27",

@@ -82,7 +82,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Search as a floating board card above the wallpaper, the same material as the structure editor.
- * Shown by the right-edge artifact, a rightward swipe on the collapsed-dock handle, or Back.
+ * Shown by the dial's Search seat or Back.
  * Automatically focuses the search field when visible.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -233,7 +233,7 @@ fun UniversalSearchOverlay(
     // (permission auto-request on first keystroke removed — see requestContacts/requestFiles,
     // triggered by explicit affordances in the results list)
 
-    // The overlay enters and retracts with the same shared spring as the sheets and the dock —
+    // The overlay enters and retracts with the same shared spring as the sheets —
     // everything in this launcher rises from the bottom, whichever edge taught you the gesture.
     AnimatedVisibility(
         visible = visible,
@@ -305,8 +305,8 @@ fun UniversalSearchOverlay(
                     }
             )
 
-            // Floating board card — square corners, steel hairline, parked a dock-height above
-            // the bottom edge (the gap collapses when the keyboard is up so the field stays in reach).
+            // Floating board card — square corners, steel hairline, parked off the bottom edge
+            // (the gap collapses when the keyboard is up so the field stays in reach).
             BoardPanel(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -391,6 +391,7 @@ fun UniversalSearchOverlay(
                                 .weight(1f)
                                 .clip(Board.cell)
                                 .focusRequester(focusRequester),
+                            shape = Board.cell,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { launchTopResult() }),
                             singleLine = true

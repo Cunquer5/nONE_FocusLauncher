@@ -6,7 +6,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 **nONE FocusLauncher** is a minimalist Android system launcher built with Kotlin and Jetpack Compose. It uses a productivity-focused design with features like grayscale focus mode, intention prompts, and a "1 Thing" task manager. The app targets Android API 28+ and uses modern Android architecture (MVVM).
 
-**Note**: As of v1.5.0, the launcher is a single **Departure Board** UI: a matte split-flap home board over the wallpaper with a live clock, the 1 Thing white band, and No./Step/Status structure rows you tap to set the current step. Search (Apps, Contacts, Files) opens from the bottom spindle handle (swipe right); Structure opens with a left swipe; swipe up reveals the dock. The board stays composed under a scrim while a sheet is open, and a completed 1 Thing persists as "Done today" until the user starts a new task.
+**Note**: As of v1.6.0, the launcher is a single **Departure Board** UI: a matte split-flap home board over the wallpaper with a live clock, the 1 Thing white band, and No./Step/Status structure rows you tap to set the current step. Navigation lives on an **arc dial** in the same board material — tap the bottom lamp or swipe up to reveal it, drag to spin, tap a side seat to select, tap the apex seat to open. Fixed seats are 1 Thing, Structure, Search, Settings, Phone and Add apps, followed by pinned apps. The lamp itself only opens the dial; Structure and Search are seats on it. Sheets stay composed under a scrim, and a completed 1 Thing persists as "Done today" until the user starts a new task.
 
 ## Build & Development Commands
 
@@ -65,11 +65,11 @@ The app follows a strict MVVM architecture:
 As of v1.4.1, the launcher uses a **single Modern UI** design with a **Universal Search Bar**.
 
 **MODERN Mode** (`ui/modern/ModernHomeScreen.kt`):
-   - Black glass morphism design with backdrop blur
-   - Orange (#FF4D00) brand accent for active states
-   - Integrated dock navigation (Apps, 1 Thing, Settings)
+   - Departure-board material: matte flap black, steel hairlines, warm paint lettering
+   - Orange (#FF4D00) reserved for the current row and the one action on a surface
+   - Arc dial navigation: fixed board actions plus pinned apps on a 30° arc
    - Widget support with AppWidgetHost
-   - Swipe-down-to-search app discovery pattern (replaces traditional app grid)
+   - Search opens from the dial's Search seat; the bottom lamp only opens the dial
    - Advanced features: intention history, wallpaper selection, mode selector (Normal/Focus/Blur)
 
 ### Data Flow Architecture
@@ -137,7 +137,7 @@ com.example.nonelauncher/
 
 ### Theme & Styling
 - **Brand Color**: Orange `#FF4D00` (`OrangePrimary`) reserved for the single action on a surface and the current row
-- **Board Material**: Matte flap black, steel hairlines, near-square cells, paint lettering, monospace figures (see `ui/theme/Board.kt`)
+- **Board Material**: Matte flap black, steel hairlines, soft rounded flap cells, paint lettering, monospace figures (see `ui/theme/Board.kt`)
 - **Material 3**: Custom theme in `ui/theme/Theme.kt` with edge-to-edge support
 - **Wallpaper**: Launcher shows device wallpaper via `FLAG_SHOW_WALLPAPER` in MainActivity
 
@@ -154,7 +154,7 @@ Required permissions in AndroidManifest.xml:
 - `REQUEST_DELETE_PACKAGES`: App uninstall support
 
 ### Version Info
-- **Current Version**: 1.5.0 (versionCode 11)
+- **Current Version**: 1.6.0 (versionCode 12)
 - **Target SDK**: 35 (Android 15)
 - **Min SDK**: 28 (Android 9)
 - **Java Version**: 17
@@ -166,7 +166,7 @@ Required permissions in AndroidManifest.xml:
 - **Welcome**: `WelcomeFirstLaunchDialog` in `ui/components/`; shown once via `first_launch_welcome_shown` in `UserPreferencesRepository`.
 - **Feedback**: `FeedbackPromptDialog`; timing in `UserPreferencesRepository.onAppResume()` (5 launches / 7 days, 30-day snooze, permanent opt-out). URL: `FEEDBACK_WEBSITE_URL`.
 - Wired in `LauncherScreen.kt`; welcome takes priority over feedback on the same resume.
-- Set `FEEDBACK_TEST_TRIGGER_ON_ONE_THING = false` before release (when `true`, feedback shows on 1 Thing dock tap for QA).
+- Set `FEEDBACK_TEST_TRIGGER_ON_ONE_THING = false` before release (when `true`, feedback shows on the dial's 1 Thing seat for QA).
 
 ### Adding a New Feature to Modern UI
 1. Check if feature requires new preference → add to `UserPreferencesRepository`

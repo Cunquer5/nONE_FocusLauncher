@@ -44,9 +44,9 @@ fun WelcomeFirstLaunchDialog(
 
                 Text(
                     text = if (isDefaultLauncher) {
-                        "Tap a row to set the current step. Set your 1 Thing on the white band. Swipe the handle left for Structure, right for search; swipe up for the dock."
+                        "Tap a row to set the current step. Set your 1 Thing on the white band. Tap the lamp for the dial, then pick Structure or Search there."
                     } else {
-                        "Thanks for installing. Set nONE as your default Home app, then tap a row to set your step, swipe the handle left for Structure and right for search."
+                        "Thanks for installing. Set nONE as your default Home app, then tap a row to set your step. Tap the lamp for the dial, then pick Structure or Search there."
                     },
                     style = BoardBodyStyle.copy(fontSize = 13.sp),
                     color = Board.Paint.copy(alpha = 0.85f)

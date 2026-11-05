@@ -25,13 +25,16 @@ band is the one departure that matters now.
 | `Board.HairFaint` | `#1B1E21` | Row seams |
 | `Board.Action` | `#FF4D00` | One action per surface, the current row |
 
-Panels are one flat matte slab — `#0C0C0C`, a 1dp `#2B2F32` hairline, 2dp corners, and a single
-26dp soft shadow that lifts it off the wallpaper. No gradient, no top highlight. Cells use a
-2dp radius. The board and its white band are painted with vertical pinstripes 24dp apart (white
-4.5% on ink, black 5% on paint), the flap-rail texture.
+Panels are one flat matte slab — `#0C0C0C`, a 1dp `#2B2F32` hairline, 28dp corners, and a single
+18dp soft shadow that lifts it off the wallpaper. No gradient, no top highlight. One corner
+scale runs through the launcher: 8dp split-flap glyph cells, 16dp cells (rows, buttons, fields,
+wells), 26dp dial seats, 28dp panels, and capsules for labels, chips and status tags. The board
+and its white band are painted with vertical pinstripes 24dp apart (white 4.5% on ink, black 5%
+on paint), the flap-rail texture.
 
-App icons, contact avatars and file glyphs sit in the same opaque wells with hairline frames —
-user content changes inside the well, never the well's shape.
+App icons, contact avatars and file glyphs sit in rounded wells with hairline frames — user
+content changes inside the well, never the well's shape. Dial seats carry the icon directly, so
+no second outline is drawn around a shaped icon.
 
 ## Type
 
@@ -57,36 +60,44 @@ in orange. Rows above it dim to 28% and strike through; the next row's STATUS is
 the rest read SCHEDULED in steel. Tapping any row moves the berth there.
 
 The second move is the **white paint band** — the 1 Thing is the one high-contrast field on the
-screen, keyed "THE ONE THING" like a departure, with the only orange action berth running the
-strip's full height. It is the board's "now departing".
+screen, keyed "THE ONE THING" like a departure, with the only orange action berth inset at its
+right end as a 16dp rounded tile. It is the board's "now departing".
 
 ## Layout
 
 Home, top to bottom inside one 12dp-margin frame: a 44dp header (NONE · date · clock ·
-remaining) → the 70dp white band with its 82dp full-height orange berth → a 25dp column rail
+remaining) → the 70dp white band, floating on 10dp vertical margins with 16dp corners, holding a
+94dp lane with the inset 82dp orange action tile → a 25dp column rail
 (NO. / STEP / STATUS, figures 74dp, statuses 92dp) → 62dp pinstriped rows, four visible before
 the list scrolls → a 34dp `#050505` footer ("N steps · N done" / "TAP A ROW"). The board sits
 10dp below the status bar.
 
-Below it, the gesture caption ("SWIPE LEFT · STRUCTURE   SWIPE RIGHT · SEARCH") and the lamp
-handle: a 16dp white circle with a soft halo, which leans toward the surface a drag is aimed at
-and turns orange once armed. A completed 1 Thing restyles the band in place ("DONE TODAY",
-struck title); the task persists until the user starts a new one.
+Below it, the one-line caption ("TAP · DIAL") and the lamp handle: a 16dp white circle with a
+soft halo, which opens the dial on tap (or from an upward swipe on the bottom band). A completed
+1 Thing restyles the band in place ("DONE TODAY", struck title); the task persists until the
+user starts a new one.
 
 Opening a surface keeps this panel composed under a 50% scrim: the board is the context, not
 a screen that unmounts. Tapping the scrim closes the top surface.
 
-The dock is a 58dp three-cell strip (Phone / 1 Thing / Settings) with steel seams, hidden
-until the lamp is tapped, swiped up, or a sheet opens. The active dock cell marks its bottom
-edge orange.
+The dial is the home's app surface: soft matte flap seats on a 30° arc, 80dp at the apex and
+68dp at one step, with the fixed seats (1 Thing, Structure, Search, Settings, Phone, Add apps)
+first and pinned apps after them. A single hairline track bridges only the gaps between seats;
+the apex seat takes an orange rim and an orange index tick below its bottom edge. The selected
+seat is tagged above the arc in a capsule ("03 · SEARCH"), and the dial opens from the lamp's
+tap or an upward swipe.
+
+Drag horizontally to spin the wheel; tap a side seat to turn it to the apex, or the apex seat
+to open it. Idle for 3s and the dial retracts (15s while Touch Exploration is on). Ballistic
+settle uses the dial's own spring, not the sheet springs, because it is a wheel.
 
 Sheets and the search card rise from the bottom on the shared spring, 8dp side margins, parked
-above the dock (120dp), collapsing to 16dp when the keyboard is up.
+above the bottom edge (120dp), collapsing to 16dp when the keyboard is up.
 
 ## Controls
 
-Standard, not themed into novelty: text fields with square wells and orange cursors, full-width
-action cells, quiet hairline buttons, a 34dp square close cell. One orange action per surface;
+Standard, not themed into novelty: text fields with rounded wells and orange cursors, full-width
+action cells, quiet hairline buttons, a 34dp capsule close cell. One orange action per surface;
 "Cancel/Later" are never orange. Action lettering is board ink on orange (6.3:1), not white
 (3.3:1).
 
@@ -96,6 +107,10 @@ action cells, quiet hairline buttons, a 34dp square close cell. One orange actio
 - Row change: tint, figure colour, strike, and status cell animate over 220ms; rows never move
   in the grid.
 - Lamp: spring back at 0.9 damping, haptic tick when armed; the halo swells with the drag.
+- Dial: seats reveal outward from the apex (`spring(0.82, 650)`) and retract faster
+  (`spring(1.0, 1000)`); a drag snaps to the nearest seat (`spring(0.84, 330)`), with a tick at
+  each boundary and a firmer tick when the apex opens. The name tag clears while the wheel
+  turns and fades in with the settle, so labels never strobe past the apex.
 - No parallax, no glow beyond the lamp halo, no continuous animation. The clock ticks, the board
   holds still.
 

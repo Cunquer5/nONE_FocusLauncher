@@ -133,7 +133,7 @@ fun SettingsSheet(
     }
 }
 
-/** Board-language switch: a squared track, no Material thumb shadow. */
+/** Board-language switch: a capsule track, no Material thumb shadow. */
 @Composable
 private fun TrackSwitch(on: Boolean) {
     Box(

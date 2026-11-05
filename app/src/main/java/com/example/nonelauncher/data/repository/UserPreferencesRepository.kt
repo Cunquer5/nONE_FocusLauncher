@@ -250,7 +250,7 @@ class UserPreferencesRepository(context: Context) {
 
         const val FEEDBACK_WEBSITE_URL = "https://none-launcher.vercel.app/dashboard"
 
-        /** Set to false before release — feedback shows on 1 Thing dock tap instead of resume rules. */
+        /** Set to false before release — feedback shows on the dial's 1 Thing seat instead of resume rules. */
         const val FEEDBACK_TEST_TRIGGER_ON_ONE_THING = false
     }
 }

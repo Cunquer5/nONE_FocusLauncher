@@ -10,9 +10,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 
 /**
- * One motion language for surfaces that rise from the bottom edge — the dock, the sheets and the
- * 1 Thing input card. Sharing the spec keeps them animating as a single system (same spring in,
- * stiffer and faster out) instead of each carrying its own copy of the numbers.
+ * One motion language for surfaces that rise from the bottom edge — the sheets, the search card
+ * and the 1 Thing input card. Sharing the spec keeps them animating as a single system (same
+ * spring in, stiffer and faster out) instead of each carrying its own copy of the numbers.
  */
 val bottomEnter: EnterTransition = slideInVertically(
     animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
